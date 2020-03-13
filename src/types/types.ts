@@ -17,9 +17,9 @@ type PullQueryParams = {
     nomodule: boolean;
     module: string;
     page: string;
-}
+};
 
 export {
     PullResponse,
-    PullQueryParams,
+    PullQueryParams
 };
