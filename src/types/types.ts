@@ -1,5 +1,5 @@
 
-interface PullResponse {
+type SkuidPage = {
     apiVersion: string;
     name: string;
     uniqueId: string;
@@ -13,6 +13,16 @@ interface PullResponse {
     content: string;
 }
 
+type PagePost = {
+    changes: SkuidPage[];
+    deletions: SkuidPage[];
+}
+
+type PagePostResult = {
+    success: boolean;
+    upsertErrors: string[];
+}
+
 type PullQueryParams = {
     nomodule: boolean;
     module: string;
@@ -20,6 +30,8 @@ type PullQueryParams = {
 };
 
 export {
-    PullResponse,
-    PullQueryParams
+    PagePost,
+    PagePostResult,
+    PullQueryParams,
+    SkuidPage,
 };

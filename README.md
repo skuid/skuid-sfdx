@@ -34,10 +34,12 @@ sfdx plugins:install skuid-sfdx
 $ sfdx skuid:page:pull
 Wrote 85 pages to skuidpages
 
-$ sfdx skuid:page:pull --module SamplePages --outputdir pages/sample
+$ sfdx skuid:page:pull --module SamplePages --dir pages/sample
 Wrote 4 pages to pages/sample
 
-...
+$ sfdx skuid:page:push salesapp/*Foo*
+3 Pages successfully pushed.
+
 ```
 <!-- usagestop -->
 
@@ -53,7 +55,7 @@ USAGE
   trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL]
 
 OPTIONS
-  -d, --outputdir=outputdir                                                         Output directory to write pages to.
+  -d, --dir=dir                                                                     Output directory to write pages to.
   -m, --module=module                                                               Module name(s), separated by a comma.
   -p, --page=page                                                                   Page name(s), separated by a comma.
   -u, --targetusername=targetusername                                               username or alias for the target org; overrides default target org
@@ -65,9 +67,31 @@ OPTIONS
 EXAMPLES
   $ sfdx skuid:page:pull --targetusername myOrg@example.com --module CommunityPages
   $ sfdx skuid:page:pull --nomodule
-  $ sfdx skuid:page:pull --page Page1,Page2,Page3 --outputdir newpages
+  $ sfdx skuid:page:pull --page Page1,Page2,Page3 --dir newpages
 
 ```
+
+* `sfdx skuid:page:push`
+
+```
+Push Skuid Pages from a directory to Skuid.
+
+USAGE
+  $ sfdx skuid:page:push [-d <string>] [-u <string>] [--apiversion <string>] [--json] [--loglevel 
+  trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL]
+
+OPTIONS
+  -d, --dir=dir                                                                     Source directory in which page files reside.
+  -u, --targetusername=targetusername                                               username or alias for the target org; overrides default target org
+  --apiversion=apiversion                                                           override the api version used for api requests made by this command
+  --json                                                                            format output as json
+  --loglevel=(trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL)  [default: warn] logging level for this command invocation
+
+EXAMPLES
+  $ sfdx skuid:page:push --targetusername myOrg@example.com
+  $ sfdx skuid:page:push skuidpages/*SalesApp
+```
+
 <!-- commandsstop -->
 
 <!-- contributing -->

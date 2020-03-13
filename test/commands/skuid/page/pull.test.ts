@@ -51,8 +51,8 @@ describe('skuid:page:pull', () => {
       return Promise.reject(new Error("Unexpected request"));
     })
     .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--nomodule', '--outputdir', 'foo'])
-    .it('only requests pages with no module, and respects outputdir ', ctx => {
+    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--nomodule', '--dir', 'foo'])
+    .it('only requests pages with no module, and respects dir ', ctx => {
       expect(ctx.stdout).to.contain('Wrote 1 pages to foo');
     });
 

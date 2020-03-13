@@ -11,6 +11,7 @@
     "@salesforce/command": "^2",
     "@salesforce/core": "^2",
     "json-stable-stringify": "^1.0.1",
+    "node-glob": "^1.2.0",
     "tslib": "^1"
   },
   "devDependencies": {
@@ -48,6 +49,9 @@
     "topics": {
       "skuid:page:pull": {
         "description": "Retrieves Skuid Pages from a target org into a filesystem directory."
+      },
+      "skuid:page:push": {
+        "description": "Push Skuid Pages from a directory to Skuid."
       }
     },
     "devPlugins": [

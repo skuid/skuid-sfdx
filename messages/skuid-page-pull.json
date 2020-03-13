@@ -3,5 +3,5 @@
   "moduleFlagDescription": "Module name(s), separated by a comma.",
   "pageNameFlagDescription": "Page name(s), separated by a comma.",
   "noModuleFlagDescription": "Retrieve only those pages that do not have a module",
-  "outputDirFlagDescription": "Output directory to write pages to."
+  "dirFlagDescription": "Output directory to write pages to."
 }

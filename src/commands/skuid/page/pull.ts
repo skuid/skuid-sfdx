@@ -7,7 +7,7 @@ import { param } from '../../../helpers/param';
 import { stringify } from '../../../helpers/stringify';
 import {
   PullQueryParams,
-  PullResponse
+  SkuidPage
 } from '../../../types/types';
 
 // Initialize Messages with the current plugin directory
@@ -24,17 +24,17 @@ export default class Pull extends SfdxCommand {
   public static examples = [
   '$ sfdx skuid:page:pull --targetusername myOrg@example.com --module CommunityPages',
   '$ sfdx skuid:page:pull --nomodule',
-  '$ sfdx skuid:page:pull --page Page1,Page2,Page3 --outputdir newpages'
+  '$ sfdx skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
   ];
 
-  public static args = [{name: 'file'}];
+  public static args = [];
 
   protected static flagsConfig = {
     // flag with a value (-n, --name=VALUE)
     module: flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
     page: flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
     nomodule: flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
-    outputdir: flags.string({ char: 'd', description: messages.getMessage('outputDirFlagDescription') })
+    dir: flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
   };
 
   // Our command requires an SFDX username
@@ -48,8 +48,8 @@ export default class Pull extends SfdxCommand {
       page
     } = this.flags;
 
-    let { outputdir } = this.flags;
-    if (!outputdir) outputdir = 'skuidpages';
+    let { dir } = this.flags;
+    if (!dir) dir = 'skuidpages';
 
     const queryParams = {} as PullQueryParams;
 
@@ -68,31 +68,31 @@ export default class Pull extends SfdxCommand {
     }
 
     // Otherwise, write a .json and .xml file in the specified output directory for every retrieved file.
-    if (!existsSync(outputdir)) mkdirSync(outputdir);
+    if (!existsSync(dir)) mkdirSync(dir);
 
-    const pullResponses: Map<string, PullResponse> = JSON.parse(resultJSON);
+    const skuidPages: Map<string, SkuidPage> = JSON.parse(resultJSON);
     // Clear out heap
     resultJSON = null;
     let numPages: number = 0;
 
-    Object.entries(pullResponses).forEach(([ pageName, pullResponse]) => {
+    Object.entries(skuidPages).forEach(([ pageName, skuidPage]) => {
       numPages++;
-      const pageBasePath: string = resolve(outputdir, pageName);
-      const xml: string = pullResponse.body || pullResponse.content;
+      const pageBasePath: string = resolve(dir, pageName);
+      const xml: string = skuidPage.body || skuidPage.content;
       writeFileSync(pageBasePath + '.xml', xml, 'utf8');
-      delete pullResponse.body;
-      delete pullResponse.content;
+      delete skuidPage.body;
+      delete skuidPage.content;
       // Remove all null props
-      for (const prop in pullResponse) {
-        if (pullResponse[prop] === null ) delete pullResponse[prop];
+      for (const prop in skuidPage) {
+        if (skuidPage[prop] === null ) delete skuidPage[prop];
       }
       // Serialize using a stable sorting algorithm
-      writeFileSync(pageBasePath + '.json', stringify(pullResponse), 'utf8');
+      writeFileSync(pageBasePath + '.json', stringify(skuidPage), 'utf8');
       // Clear out memory from our response
-      delete pullResponses[pageName];
+      delete skuidPages[pageName];
     });
 
-    this.ux.log('Wrote ' + numPages + ' pages to ' + outputdir);
+    this.ux.log('Wrote ' + numPages + ' pages to ' + dir);
 
     return {};
   }
