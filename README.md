@@ -16,6 +16,7 @@ SFDX plugin for managing Skuid metadata
 * [Installation](#installation)
 * [Usage](#usage)
 * [Commands](#commands)
+* [Contributing](#contributing)
 <!-- tocstop -->
 
 <!-- install -->
@@ -68,3 +69,34 @@ EXAMPLES
 
 ```
 <!-- commandsstop -->
+
+<!-- contributing -->
+# Contributing
+
+To get started with contributing to this plugin locally, clone the repo and then link the plugin to sfdx so that it will appear within your sfdx commands list:
+
+## Setup
+
+```sh-session
+git clone https://github.com/skuid/skuid-sfdx.git
+cd skuid-sfdx
+sfdx plugins:link
+```
+
+## Orientation
+
+Logic for each command (e.g. `skuid:page:pull`) is defined within a specific file under `src/commands`, within a folder structure corresponding to that plugin's namespace (e.g. the `pull` command is within `skuid/page` directory).
+
+## Tests
+
+Tests are located within a matching directory under `test/commands`.
+
+To run tests: 
+
+```sh-session
+npm test
+```
+
+When adding / modifying commands, please update the README with the latest output of running the command's `--help`.
+
+<!-- contributingstop -->
