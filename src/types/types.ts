@@ -11,17 +11,18 @@ type SkuidPage = {
     composerSettings: object;
     body: string;
     content: string;
-}
+};
 
 type PagePost = {
     changes: SkuidPage[];
     deletions: SkuidPage[];
-}
+};
 
 type PagePostResult = {
+    pages: string[];
     success: boolean;
     upsertErrors: string[];
-}
+};
 
 type PullQueryParams = {
     nomodule: boolean;
@@ -33,5 +34,5 @@ export {
     PagePost,
     PagePostResult,
     PullQueryParams,
-    SkuidPage,
+    SkuidPage
 };

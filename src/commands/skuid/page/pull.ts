@@ -59,9 +59,17 @@ export default class Pull extends SfdxCommand {
 
     const conn = this.org.getConnection();
     let resultJSON: string = await conn.apex.get(`/skuid/api/v1/pages?${param(queryParams)}`);
-    // If json requested, just return the raw result
+    // If json requested, just return the result,
+    // but trim off leading _ from the page names,
+    // which will happen for pages not in a module
     if (json) {
       const result: JsonMap = JSON.parse(resultJSON);
+      Object.keys(result).forEach(pageName => {
+        if (pageName.startsWith('_')) {
+          result[pageName.substring(1)] = result[pageName];
+          delete result[pageName];
+        }
+      });
       return {
         pages: result
       };
@@ -77,7 +85,9 @@ export default class Pull extends SfdxCommand {
 
     Object.entries(skuidPages).forEach(([ pageName, skuidPage]) => {
       numPages++;
+      if (pageName.startsWith('_')) pageName = pageName.substring(1);
       const pageBasePath: string = resolve(dir, pageName);
+      // Trim leading _ off of the name, which will happen for pages not in a module
       const xml: string = skuidPage.body || skuidPage.content;
       writeFileSync(pageBasePath + '.xml', xml, 'utf8');
       delete skuidPage.body;

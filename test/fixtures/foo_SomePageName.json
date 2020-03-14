@@ -1,0 +1,8 @@
+{
+    "apiVersion": "v1",
+    "name": "SomePageName",
+    "module": "foo",
+    "uniqueId": "foo_SomePageName",
+    "composerSettings": null,
+    "maxAutoSaves": 100
+}

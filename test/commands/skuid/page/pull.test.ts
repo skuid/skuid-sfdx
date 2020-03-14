@@ -1,11 +1,12 @@
 import { expect, test } from '@salesforce/command/lib/test';
 import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
+import { sync as rmSync }  from 'rimraf';
 
 const v1PageObject = {
   "apiVersion": "v1",
   "name": "SomePageName",
   "module": "foo",
-  "uniqueId": "foo__SomePageName",
+  "uniqueId": "foo_SomePageName",
   "composerSettings": null,
   "maxAutoSaves": 100,
   "body": "<skuidpage><models/></skuidpage>",
@@ -14,21 +15,30 @@ const v2PageObject = {
   "apiVersion": "v2",
   "name": "AnotherPageName",
   "module": null,
-  "uniqueId": "__AnotherPageName",
+  "uniqueId": "_AnotherPageName",
   "composerSettings": { },
   "maxAutoSaves": 98,
   "body": "<skuid__page><models/></skuid__page>",
 }
 
 describe('skuid:page:pull', () => {
+
+  const clean = () => {
+    rmSync('foo');
+    rmSync('skuidpages');
+  };
+
+  before(clean);
+  after(clean);
+
   test
     .withOrg({ username: 'test@org.com' }, true)
     .withConnectionRequest(request => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
-          "foo__SomePageName": v1PageObject,
-          "__AnotherPageName": v2PageObject,
+          "foo_SomePageName": v1PageObject,
+          "_AnotherPageName": v2PageObject,
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
@@ -45,7 +55,7 @@ describe('skuid:page:pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?nomodule=true/)) {
         return Promise.resolve(JSON.stringify({
-          "__AnotherPageName": v2PageObject,
+          "_AnotherPageName": v2PageObject,
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
@@ -62,7 +72,7 @@ describe('skuid:page:pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo/)) {
         return Promise.resolve(JSON.stringify({
-          "foo__SomePageName": v1PageObject,
+          "foo_SomePageName": v1PageObject,
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
@@ -79,8 +89,8 @@ describe('skuid:page:pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?page=SomePageName%2CAnotherPageName/)) {
         return Promise.resolve(JSON.stringify({
-          "foo__SomePageName": v1PageObject,
-          "__AnotherPageName": v2PageObject,
+          "foo_SomePageName": v1PageObject,
+          "_AnotherPageName": v2PageObject,
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
@@ -97,8 +107,8 @@ describe('skuid:page:pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
-          "foo__SomePageName": v1PageObject,
-          "__AnotherPageName": v2PageObject,
+          "foo_SomePageName": v1PageObject,
+          "_AnotherPageName": v2PageObject,
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
@@ -111,10 +121,10 @@ describe('skuid:page:pull', () => {
         status: 0,
         result: {
           pages: {
-            "foo__SomePageName": v1PageObject,
-            "__AnotherPageName": v2PageObject,
+            "foo_SomePageName": v1PageObject,
+            "AnotherPageName": v2PageObject,
           }
         }
-      })
+      });
     });
 });

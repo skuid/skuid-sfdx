@@ -26,6 +26,7 @@
     "globby": "^8",
     "mocha": "^5",
     "nyc": "^14",
+    "rimraf": "^3.0.2",
     "ts-node": "^8",
     "tslint": "^5"
   },
@@ -60,6 +61,7 @@
   },
   "repository": "skuid/skuid-sfdx",
   "scripts": {
+    "lint-fix": "tslint -p test --fix -t stylish",
     "postpack": "rm -f oclif.manifest.json",
     "posttest": "tslint -p test -t stylish",
     "prepack": "rm -rf lib && tsc -b && oclif-dev manifest && oclif-dev readme",
