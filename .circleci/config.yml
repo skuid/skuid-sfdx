@@ -1,5 +1,7 @@
 ---
-version: 2
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.2
 jobs:
   node-latest: &test
     docker:
@@ -18,10 +20,13 @@ jobs:
           name: Testing
           command: yarn test
       - run:
-          name: Submitting code coverage to codecov
-          command: |
-            ./node_modules/.bin/nyc report --reporter text-lcov > coverage.lcov
-            curl -s https://codecov.io/bash | bash
+          name: Testing
+          command: yarn test
+      - run:
+          name: Generating code coverage report
+          command: ./node_modules/.bin/nyc report --reporter text-lcov > coverage.lcov
+      - codecov/upload:
+          file: coverage.lcov
   node-10:
     <<: *test
     docker:
