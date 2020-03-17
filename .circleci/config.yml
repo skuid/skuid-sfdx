@@ -21,9 +21,6 @@ jobs:
           name: Testing
           command: yarn test
       - run:
-          name: Generating code coverage report
-          command: ./node_modules/.bin/nyc report --reporter text-lcov > ./coverage.lcov
-      - run:
           name: Uploading to codecov
           command: bash <(curl -s https://codecov.io/bash)
   node-10:
