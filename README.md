@@ -7,7 +7,6 @@ SFDX plugin for managing Skuid metadata
 [![CircleCI](https://circleci.com/gh/skuid/skuid-sfdx/tree/master.svg?style=shield)](https://circleci.com/gh/skuid/skuid-sfdx/tree/master)
 [![Appveyor CI](https://ci.appveyor.com/api/projects/status/github/skuid/skuid-sfdx?branch=master&svg=true)](https://ci.appveyor.com/project/skuid/skuid-sfdx/branch/master)
 [![Codecov](https://codecov.io/gh/skuid/skuid-sfdx/branch/master/graph/badge.svg)](https://codecov.io/gh/skuid/skuid-sfdx)
-[![Known Vulnerabilities](https://snyk.io/test/github/skuid/skuid-sfdx/badge.svg)](https://snyk.io/test/github/skuid/skuid-sfdx)
 [![Downloads/week](https://img.shields.io/npm/dw/skuid-sfdx.svg)](https://npmjs.org/package/skuid-sfdx)
 [![License](https://img.shields.io/npm/l/skuid-sfdx.svg)](https://github.com/skuid/skuid-sfdx/blob/master/package.json)
 
