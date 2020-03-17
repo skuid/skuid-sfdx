@@ -19,8 +19,13 @@ SFDX plugin for managing Skuid metadata
 
 <!-- install -->
 # Installation
+
+ First, ensure you have [installed `sfdx`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
+
+  Now, install the skuid-sfdx plugin:
+
+
 ```sh-session
-npm install -g skuid-sfdx
 sfdx plugins:install skuid-sfdx
 ```
 <!-- installstop -->
