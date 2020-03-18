@@ -29,8 +29,6 @@ jobs:
   node-latest-windows:
     executor:
       name: win/default
-    docker:
-      - image: node:latest
     working_directory: ~/cli
     steps:
       - checkout
