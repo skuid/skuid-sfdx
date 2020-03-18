@@ -1,5 +1,7 @@
 ---
 version: 2.1
+orbs:
+  win: circleci/windows@2.2.0
 jobs:
   node-latest: &test
     docker:
@@ -40,6 +42,14 @@ jobs:
             - ~/cli/node_modules
             - /usr/local/share/.cache/yarn
             - /usr/local/share/.config/yarn
+  node-latest-windows:
+    <<: *test
+    executor: win/default
+  node-10-windows:
+    <<: *test
+    executor: win/default
+    docker:
+      - image: node:10
 
 workflows:
   version: 2
@@ -47,6 +57,8 @@ workflows:
     jobs:
       - node-latest
       - node-10
+      - node-latest-windows
+      - node-10-windows
       - cache:
           filters:
             tags:
