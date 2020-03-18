@@ -28,9 +28,11 @@ SFDX plugin for managing Skuid metadata
 echo 'y' | sfdx plugins:install skuid-sfdx
 ```
 
- NOTE: ordinarily when you install an `sfdx` plugin, it will ask you to trust the plugin. The `echo 'y'` merely skips that step, as a convenience. There is currently no way for non-Salesforce plugin creators to sign an SFDX plugin so that it is "trusted", so this step is necessary for the time being.
- 
- To use `skuid-sfdx` in a CI environment, you will either need to auto-trust the plugin with `echo 'y'` as above, or else add the plugin to a whitelisted of trusted SFDX plugins, [as described here](https://github.com/forcedotcom/LightningTestingService/issues/53).
+**Note**: When you install an `sfdx` plugin, it will ask you to trust the plugin by typing `y`. The `echo 'y'` above skips that step as a convenience. 
+
+Why do this? Currently, only Salesforce's internal developers can sign plugins. Because other plugin creators *cannot* sign their SFDX plugins so they are "trusted," the `echo 'y'` is necessary for the time being.
+
+To use `skuid-sfdx` in a CI environment, you will either need to auto-trust the plugin with `echo 'y'` as above or add the plugin to a whitelist of trusted SFDX plugins, [as described in the "CI and CD Impact" section of this Salesforce blog post](https://developer.salesforce.com/blogs/2017/10/salesforce-dx-cli-plugin-update.html).
 
 <!-- installstop -->
 
