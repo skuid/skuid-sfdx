@@ -39,7 +39,7 @@ jobs:
             - ~/cli/node_modules
             - /usr/local/share/.cache/yarn
             - /usr/local/share/.config/yarn
-  node-latest-windows: &testwindows
+  node-latest-windows:
     executor:
       name: win/default
     docker:
@@ -63,10 +63,6 @@ jobs:
           name: Uploading to codecov
           command: bash <(curl -s https://codecov.io/bash)
           shell: bash.exe
-  node-10-windows:
-    <<: *testwindows
-    docker:
-      - image: node:10
 
 workflows:
   version: 2
@@ -75,7 +71,6 @@ workflows:
       - node-latest
       - node-10
       - node-latest-windows
-      - node-10-windows
       - cache:
           filters:
             tags:
