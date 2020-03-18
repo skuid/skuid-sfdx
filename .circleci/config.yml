@@ -44,10 +44,6 @@ jobs:
           name: Testing
           command: yarn test
           shell: bash.exe
-      - run:
-          name: Uploading to codecov
-          command: bash <(curl -s https://codecov.io/bash)
-          shell: bash.exe
   cache:
     <<: *test
     steps:
