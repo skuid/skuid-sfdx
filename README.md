@@ -26,7 +26,7 @@ SFDX plugin for managing Skuid metadata
 
 
 ```sh-session
-sfdx plugins:install skuid-sfdx
+echo 'y' | sfdx plugins:install skuid-sfdx
 ```
 <!-- installstop -->
 
