@@ -3,8 +3,10 @@ import { Messages } from '@salesforce/core';
 import { AnyJson, JsonMap } from '@salesforce/ts-types';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { stringify } from '../../../helpers/jsonStringify';
 import { param } from '../../../helpers/param';
-import { stringify } from '../../../helpers/stringify';
+
+import { formatXml } from '../../../helpers/formatXml';
 import {
   PullQueryParams,
   SkuidPage
@@ -65,8 +67,11 @@ export default class Pull extends SfdxCommand {
     if (json) {
       const result: JsonMap = JSON.parse(resultJSON);
       Object.keys(result).forEach(pageName => {
+        const pageResult = result[pageName];
+        const xmlKey = pageResult.hasOwnProperty('body') ? 'body' : 'content';
+        pageResult[xmlKey] = this.beautifyXml(pageResult[xmlKey], pageName);
         if (pageName.startsWith('_')) {
-          result[pageName.substring(1)] = result[pageName];
+          result[pageName.substring(1)] = pageResult;
           delete result[pageName];
         }
       });
@@ -89,7 +94,7 @@ export default class Pull extends SfdxCommand {
       const pageBasePath: string = resolve(dir, pageName);
       // Trim leading _ off of the name, which will happen for pages not in a module
       const xml: string = skuidPage.body || skuidPage.content;
-      writeFileSync(pageBasePath + '.xml', xml, 'utf8');
+      writeFileSync(pageBasePath + '.xml', this.beautifyXml(xml, pageName), 'utf8');
       delete skuidPage.body;
       delete skuidPage.content;
       // Remove all null props
@@ -105,5 +110,14 @@ export default class Pull extends SfdxCommand {
     this.ux.log('Wrote ' + numPages + ' pages to ' + dir);
 
     return {};
+  }
+
+  private beautifyXml(xml: string, pageName: string): string {
+    try {
+      xml = formatXml(xml);
+    } catch (err) {
+      this.ux.error(`Page ${pageName} has invalid XML.`);
+    }
+    return xml;
   }
 }
