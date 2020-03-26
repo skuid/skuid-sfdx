@@ -1,6 +1,7 @@
 import { expect, test } from '@salesforce/command/lib/test';
 import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { sync as rmSync }  from 'rimraf';
+import { formatXml } from '../../../../src/helpers/formatXml';
 
 const v1PageObject = {
   "apiVersion": "v1",
@@ -18,8 +19,14 @@ const v2PageObject = {
   "uniqueId": "_AnotherPageName",
   "composerSettings": { },
   "maxAutoSaves": 98,
-  "body": "<skuid__page><models/></skuid__page>",
-}
+  "body": `<skuid__page><models><model id="Accs"></model></models></skuid__page>`,
+};
+const v1PageWithPrettyXML = Object.assign({}, v1PageObject, {
+  body: formatXml(v1PageObject.body)
+});
+const v2PageWithPrettyXML = Object.assign({}, v2PageObject, {
+  body: formatXml(v2PageObject.body)
+});
 
 describe('skuid:page:pull', () => {
 
@@ -121,10 +128,11 @@ describe('skuid:page:pull', () => {
         status: 0,
         result: {
           pages: {
-            "foo_SomePageName": v1PageObject,
-            "AnotherPageName": v2PageObject,
+            "foo_SomePageName": v1PageWithPrettyXML,
+            "AnotherPageName": v2PageWithPrettyXML,
           }
         }
       });
     });
+
 });
