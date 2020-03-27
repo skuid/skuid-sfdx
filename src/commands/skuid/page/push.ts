@@ -1,7 +1,7 @@
-import { flags, SfdxCommand } from '@salesforce/command';
+import { flags, FlagsConfig, SfdxCommand } from '@salesforce/command';
 import { Messages, SfdxError } from '@salesforce/core';
 import { AnyJson } from '@salesforce/ts-types';
-import { getPageDefinitionsFromGlob } from '../../../helpers/readPageFiles';
+import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
 import {
     PagePost,
     PagePostResult,
@@ -21,10 +21,17 @@ export default class Push extends SfdxCommand {
     public static description = messages.getMessage('commandDescription');
 
     public static examples = [
-        '$ sfdx skuid:page:push --targetusername myOrg@example.com',
-        '$ sfdx skuid:page:push skuidpages/*SalesApp'
+        '$ sfdx skuid:page:push -u=myOrg@example.com *SalesApp*',
+        '$ sfdx skuid:page:push skuidpages/SalesApp*',
+        '$ sfdx skuid:page:push -d=salespages SalesApp*',
+        '$ sfdx skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml',
+        '$ sfdx skuid:page:push **/*.xml',
     ];
 
+    // Allow a variable number of arguments to allow shells to auto-expand globs,
+    // e.g. zsh may expand the single arg "foo/sample*" into separate arguments
+    /// "foo/sample1.xml foo/sample1.json foo/sample2.json foo/sample2.xml"
+    public static strict = false;
     public static args = [{ name: 'file' }];
 
     protected static flagsConfig = {
@@ -36,13 +43,51 @@ export default class Push extends SfdxCommand {
 
     public async run(): Promise<AnyJson> {
 
-        const { file } = this.args;
         const {
             json,
             dir
         } = this.flags;
+        const filePaths = [];
 
-        const pageDefinitions = await getPageDefinitionsFromGlob(file || '**/*.json', dir) as SkuidPage[];
+        const shortFlagChars = new Set();
+        for (const flagConfig of Object.values(Push.flagsConfig)) {
+            const config = flagConfig as unknown as FlagsConfig;
+            shortFlagChars.add(config.char);
+        }
+
+        for (let i = 0; i < this.argv.length; i++) {
+            const arg = this.argv[i];
+            if (!arg || !arg.length) continue;
+            let equalsIndex = arg.indexOf('=');
+            if (equalsIndex === -1) equalsIndex = arg.length;
+            const isArg =
+                // Long-form args
+                (arg.startsWith('--') && this.flags[arg.substring(2, equalsIndex)]) ||
+                // Short-form args
+                (
+                    arg.startsWith('-') &&
+                    (
+                        shortFlagChars.has(arg.substring(1, equalsIndex)) ||
+                        (arg.substring(1, equalsIndex) === 'u')
+                    )
+                );
+            if (isArg) {
+                // If this is a vararg, then the value is contained in the arg,
+                // and we do NOT need to do a look-ahead to the subsequent arg to get the value.
+                // Otherwise, we need to skip the subsequent argument for purposes of our parsing
+                // because it is not a file path, it's the value for this arg.
+                const isVarArg = arg === '--json' || arg.includes('=');
+                if (!isVarArg) {
+                    i = i + 1;
+                }
+            } else {
+                filePaths.push(arg);
+            }
+        }
+
+        if (!filePaths.length) filePaths.push('**/*.json');
+
+        const pageDefinitions = await getPageDefinitionsFromFileGlobs(filePaths, dir) as SkuidPage[];
 
         if (!pageDefinitions.length) {
             if (json) {
@@ -51,7 +96,7 @@ export default class Push extends SfdxCommand {
                     success: false
                 };
             } else {
-                this.ux.log('Found no matching pages within target directory.');
+                this.ux.log('Found no matching pages in the provided file paths.');
                 return {};
             }
         }

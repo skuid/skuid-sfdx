@@ -86,10 +86,106 @@ describe('skuid:page:push', () => {
 
     test
         .withOrg({ username: 'test@org.com' }, true)
+        .withConnectionRequest(request => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expect(requestMap.body).to.deep.equal(JSON.stringify({
+                    changes: [
+                        Object.assign({}, JSON.parse(v2PageMetadata), { body: v2PageXml }),
+                        Object.assign({}, JSON.parse(v1PageMetadata), { body: v1PageXml }),
+                    ]
+                }));
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        })
+        .stdout()
+        .command([
+            'skuid:page:push',
+            '-u',
+            'test@org.com',
+            'test/fixtures/AnotherPageName.json',
+            'test/fixtures/AnotherPageName.xml',
+            'test/fixtures/foo_SomePageName.json',
+            'test/fixtures/foo_SomePageName.xml',
+        ])
+        .it('should accept multiple file paths', ctx => {
+            expect(ctx.stdout).to.contain('Found 2 matching pages within current directory, pushing changes to org...');
+            expect(ctx.stdout).to.contain('2 Pages successfully pushed.');
+        });
+
+    test
+        .withOrg({ username: 'test@org.com' }, true)
+        .withConnectionRequest(request => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expect(requestMap.body).to.deep.equal(JSON.stringify({
+                    changes: [
+                        Object.assign({}, JSON.parse(v2PageMetadata), { body: v2PageXml }),
+                        Object.assign({}, JSON.parse(v1PageMetadata), { body: v1PageXml }),
+                    ]
+                }));
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        })
+        .stdout()
+        .command([
+            'skuid:page:push',
+            '-u',
+            'test@org.com',
+            'test/fixtures/AnotherPageName.xml',
+            'test/fixtures/AnotherPageName.xml',
+            'test/fixtures/foo_SomePageName.xml',
+            'test/fixtures/foo_SomePageName.xml',
+        ])
+        .it('should accept multiple file paths, but remove duplicates', ctx => {
+            expect(ctx.stdout).to.contain('Found 2 matching pages within current directory, pushing changes to org...');
+            expect(ctx.stdout).to.contain('2 Pages successfully pushed.');
+        });
+
+    test
+        .withOrg({ username: 'test@org.com' }, true)
+        .withConnectionRequest(request => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expect(requestMap.body).to.deep.equal(JSON.stringify({
+                    changes: [
+                        Object.assign({}, JSON.parse(v1PageMetadata), { body: v1PageXml }),
+                    ]
+                }));
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        })
+        .stdout()
+        .command([
+            'skuid:page:push',
+            '-u',
+            'test@org.com',
+            '-d',
+            'test',
+            'fixtures/boo*',
+            '*foo*',
+            'fixtures/foo_SomePageName.xml'
+        ])
+        .it('should accept multiple file paths containing globs', ctx => {
+            expect(ctx.stdout).to.contain('Found 1 matching pages within test, pushing changes to org...');
+            expect(ctx.stdout).to.contain('1 Pages successfully pushed.');
+        });
+
+    test
+        .withOrg({ username: 'test@org.com' }, true)
         .stdout()
         .command(['skuid:page:push', '--targetusername', 'test@org.com', 'test/fixtures/*BBBBBBBB*'])
         .it('should not make a request if no matching pages are found', ctx => {
-            expect(ctx.stdout).to.contain('Found no matching pages within target directory.');
+            expect(ctx.stdout).to.contain('Found no matching pages in the provided file paths.');
         });
 
     test
