@@ -25,7 +25,7 @@ export default class Push extends SfdxCommand {
         '$ sfdx skuid:page:push skuidpages/SalesApp*',
         '$ sfdx skuid:page:push -d=salespages SalesApp*',
         '$ sfdx skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml',
-        '$ sfdx skuid:page:push **/*.xml',
+        '$ sfdx skuid:page:push **/*.xml'
     ];
 
     // Allow a variable number of arguments to allow shells to auto-expand globs,

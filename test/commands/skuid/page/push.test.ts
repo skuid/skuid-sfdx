@@ -104,8 +104,7 @@ describe('skuid:page:push', () => {
         .stdout()
         .command([
             'skuid:page:push',
-            '-u',
-            'test@org.com',
+            '-u=test@org.com',
             'test/fixtures/AnotherPageName.json',
             'test/fixtures/AnotherPageName.xml',
             'test/fixtures/foo_SomePageName.json',
