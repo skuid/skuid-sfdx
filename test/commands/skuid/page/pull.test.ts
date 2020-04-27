@@ -1,6 +1,6 @@
 import { expect, test } from '@salesforce/command/lib/test';
 import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
-import { sync as rmSync }  from 'rimraf';
+import { sync as rmSync } from 'rimraf';
 import { formatXml } from '../../../../src/helpers/formatXml';
 
 const v1PageObject = {
@@ -12,6 +12,17 @@ const v1PageObject = {
   "maxAutoSaves": 100,
   "body": "<skuidpage><models/></skuidpage>",
 };
+
+const v1PageObjectWithSlashModule = {
+  "apiVersion": "v1",
+  "name": "SomePageName",
+  "module": "foo/bar",
+  "uniqueId": "foo/bar_SomePageName",
+  "composerSettings": null,
+  "maxAutoSaves": "100",
+  "body": "<skuidpage><models/></skuidpage>"
+};
+
 const v2PageObject = {
   "apiVersion": "v2",
   "name": "AnotherPageName",
@@ -87,6 +98,23 @@ describe('skuid:page:pull', () => {
     .stdout()
     .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo'])
     .it('only requests pages in specified module', ctx => {
+      expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
+    });
+
+  test
+    .withOrg({ username: 'test@org.com' }, true)
+    .withConnectionRequest(request => {
+      const requestMap = ensureJsonMap(request);
+      if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar/)) {
+        return Promise.resolve(JSON.stringify({
+          "foo/bar_SomePageName": v1PageObjectWithSlashModule,
+        }));
+      }
+      return Promise.reject(new Error("Unexpected request"));
+    })
+    .stdout()
+    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar'])
+    .it('only requests pages in specific module and replace / with -', ctx => {
       expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
     });
 

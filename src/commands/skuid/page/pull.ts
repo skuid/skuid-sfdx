@@ -91,6 +91,7 @@ export default class Pull extends SfdxCommand {
     Object.entries(skuidPages).forEach(([ pageName, skuidPage]) => {
       numPages++;
       if (pageName.startsWith('_')) pageName = pageName.substring(1);
+      pageName = pageName.replace('/', '-');
       const pageBasePath: string = resolve(dir, pageName);
       // Trim leading _ off of the name, which will happen for pages not in a module
       const xml: string = skuidPage.body || skuidPage.content;
@@ -106,7 +107,6 @@ export default class Pull extends SfdxCommand {
       // Clear out memory from our response
       delete skuidPages[pageName];
     });
-
     this.ux.log('Wrote ' + numPages + ' pages to ' + dir);
 
     return {};
