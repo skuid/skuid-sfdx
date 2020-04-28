@@ -15,9 +15,9 @@ const v1PageObject = {
 
 const v1PageObjectWithSlashModule = {
   "apiVersion": "v1",
-  "name": "SomePageName",
-  "module": "foo/bar",
-  "uniqueId": "foo/bar_SomePageName",
+  "name": "Some/Page\\Name",
+  "module": "foo/bar\\baz",
+  "uniqueId": "foo/bar\\baz_Some/Page\\Name",
   "composerSettings": null,
   "maxAutoSaves": "100",
   "body": "<skuidpage><models/></skuidpage>"
@@ -105,16 +105,16 @@ describe('skuid:page:pull', () => {
     .withOrg({ username: 'test@org.com' }, true)
     .withConnectionRequest(request => {
       const requestMap = ensureJsonMap(request);
-      if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar/)) {
+      if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
-          "foo/bar_SomePageName": v1PageObjectWithSlashModule,
+          "foo/bar\\baz_Some/Page\\Name": v1PageObjectWithSlashModule,
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
     })
     .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar'])
-    .it('only requests pages in specific module and replace / with -', ctx => {
+    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar\\baz'])
+    .it('removes unsafe directory characters from at-rest file names', ctx => {
       expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
     });
 
