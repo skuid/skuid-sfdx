@@ -74,6 +74,11 @@ export default class Pull extends SfdxCommand {
           result[pageName.substring(1)] = pageResult;
           delete result[pageName];
         }
+        const newName = pageName.replace(/[\/\\]/g, '');
+        if (pageName !== newName) {
+          result[newName] = result[pageName];
+          delete result[pageName];
+        }
       });
       return {
         pages: result

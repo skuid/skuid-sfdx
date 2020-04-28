@@ -39,6 +39,10 @@ const v2PageWithPrettyXML = Object.assign({}, v2PageObject, {
   body: formatXml(v2PageObject.body)
 });
 
+const v1PageObjectWithSlashModulePrettyXML = Object.assign({}, v1PageObjectWithSlashModule, {
+  body: formatXml(v1PageObjectWithSlashModule.body)
+});
+
 describe('skuid:page:pull', () => {
 
   const clean = () => {
@@ -158,6 +162,31 @@ describe('skuid:page:pull', () => {
           pages: {
             "foo_SomePageName": v1PageWithPrettyXML,
             "AnotherPageName": v2PageWithPrettyXML,
+          }
+        }
+      });
+    });
+
+  test
+    .withOrg({ username: "test@org.com" }, true)
+    .withConnectionRequest(request => {
+      const requestMap = ensureJsonMap(request);
+      if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
+        return Promise.resolve(JSON.stringify({
+          "foo/bar\\baz_Some/Page\\Name": v1PageObjectWithSlashModule,
+        }));
+      }
+      return Promise.reject(new Error("Unexpected request"));
+    })
+    .stdout()
+    .command(["skuid:page:pull", "--targetusername", "test@org.com", "--json", '--module', "foo/bar\\baz"])
+    .it("removes unsafe directory characters from at-rest file names in json output", ctx => {
+      const jsonOutput = JSON.parse(ctx.stdout);
+      expect(jsonOutput).to.deep.equal({
+        status: 0,
+        result: {
+          pages: {
+            "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
           }
         }
       });
