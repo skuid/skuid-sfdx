@@ -76,6 +76,11 @@ export default class Pull extends SfdxCommand {
           result[pageName.substring(1)] = pageResult;
           delete result[pageName];
         }
+        const newName = pageName.replace(/[\/\\]/g, '');
+        if (pageName !== newName) {
+          result[newName] = result[pageName];
+          delete result[pageName];
+        }
       });
       return {
         pages: result
@@ -94,6 +99,7 @@ export default class Pull extends SfdxCommand {
       numPages++;
       // Trim leading _ off of the name, which will happen for pages not in a module
       if (pageName.startsWith('_')) pageName = pageName.substring(1);
+      pageName = pageName.replace(/[\/\\]/g, '');
       const pageBasePath: string = resolve(dir, pageName);
       const xml: string = skuidPage.body || skuidPage.content;
       writeFileSync(pageBasePath + '.xml', this.beautifyXml(xml, pageName), 'utf8');
@@ -108,7 +114,6 @@ export default class Pull extends SfdxCommand {
       // Clear out memory from our response
       delete skuidPages[pageName];
     });
-
     this.ux.log('Wrote ' + numPages + ' pages to ' + dir);
 
     return {};
