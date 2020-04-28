@@ -4,6 +4,14 @@ import * as glob from 'glob';
 import * as path from 'path';
 import { SkuidPage } from '../types/types';
 
+const REQUIRED_PAGE_PROPERTIES = [
+    'name',
+    'uniqueId'
+];
+
+const INVALID_PAGE_JSON = 'Invalid Skuid Page JSON file';
+const INVALID_PAGE_XML = 'Invalid Skuid Page XML file';
+
 type GlobOptions = {
     cwd: string;
 };
@@ -40,6 +48,8 @@ async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
     const uniquePaths = new Set();
     for (const resultsArray of globResults) {
         for (let result of resultsArray) {
+            // Ignore everything that's not .xml/.json
+            if (!result.endsWith('.xml') && !result.endsWith('.json')) continue;
             // We're going to be looking for just .json files later,
             // so convert all .xml paths to .json, and deduplicate.
             if (result.endsWith('.xml')) result = result.substring(0, result.lastIndexOf('.xml')) + '.json';
@@ -50,13 +60,27 @@ async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
         }
     }
 
-    const finalResults = await Promise.all(
+    const pageDefinitions = [] as SkuidPage[];
+    await Promise.all(
         combinedResults
-            .map(f => getPageDefinitionFromJsonPath(
-                path.resolve(sourceDirectory || '', f)
-            ))
+            .map(async f => {
+                let result;
+                try {
+                    result = await getPageDefinitionFromJsonPath(path.resolve(sourceDirectory || '', f));
+                    pageDefinitions.push(result);
+                } catch (e) {
+                    if ([
+                        INVALID_PAGE_XML,
+                        INVALID_PAGE_JSON
+                    ].includes(e.message)) {
+                        return;
+                    } else {
+                        throw e;
+                    }
+                }
+            })
     );
-    return finalResults as SkuidPage[];
+    return pageDefinitions;
 }
 
 async function getFileBody(filePath) {
@@ -69,19 +93,62 @@ async function getFileBody(filePath) {
 }
 
 /**
+ * Performs a very basic sanity test on whether the input file a valid Skuid Page JSON definition
+ * @param pageDef {SkuidPage} pageDef - a potential Skuid Page JSON definition
+ * @returns {Boolean}
+ */
+function isValidPageJSONDefinition(pageDef) {
+    // Our goal here is just to prevent users from inadvertently grabbing non-Skuid JSON files
+    // via a glob pattern. We will defer to server-side validation to ensure the JSON is
+    // properly formatted.
+    let isValid = true;
+    REQUIRED_PAGE_PROPERTIES.forEach((prop: string) => {
+        if (!Object.prototype.hasOwnProperty.call(pageDef, prop)) {
+            isValid = false;
+        }
+    });
+    return isValid;
+}
+
+/**
+ * Performs a very basic sanity test on whether the input file is valid Skuid Page XML.
+ * @param xml {String} Skuid Page XML
+ * @returns {Boolean}
+ */
+function isValidPageXML(xml) {
+    // Our goal here is just to prevent users from inadvertently grabbing non-Skuid XML files
+    // via a glob pattern. We will defer to server-side validation to ensure the XML is
+    // properly formatted.
+    const trimmed = xml.trim();
+    return trimmed.startsWith('<skuidpage') || trimmed.startsWith('<skuid__page');
+}
+/**
  *
- * @param jsonFilePath
+ * @param {String} jsonFilePath
  * @returns {SkuidPage} a Skuid Page definition
+ * @throws Exception if the input file path corresponds to invalid Skuid Page JSON / XML
  */
 async function getPageDefinitionFromJsonPath(jsonFilePath) {
     const results = await Promise.all([
-        getFileBody(jsonFilePath.replace('.json', '.xml')),
-        getFileBody(jsonFilePath)
+        getFileBody(jsonFilePath.replace('.json', '.xml')).catch(() => ''),
+        getFileBody(jsonFilePath).catch(() => '')
     ]);
     const xml: string = results[0] as string;
     const metadata: string = results[1] as string;
 
-    const pageDefinition: SkuidPage = JSON.parse(metadata) as SkuidPage;
+    let pageDefinition;
+    try {
+        pageDefinition = JSON.parse(metadata) as SkuidPage;
+    } catch (ex) {}
+
+    // Ensure that the provided page JSON definition is valid,
+    // otherwise do not include it.
+    if (!pageDefinition || !isValidPageJSONDefinition(pageDefinition)) {
+        throw Error(INVALID_PAGE_JSON);
+    }
+    if (xml && !isValidPageXML(xml)) {
+        throw Error(INVALID_PAGE_XML);
+    }
 
     return Object.assign(pageDefinition, {
         body: xml || null
@@ -89,6 +156,5 @@ async function getPageDefinitionFromJsonPath(jsonFilePath) {
 }
 
 export {
-    getPageDefinitionFromJsonPath,
     getPageDefinitionsFromFileGlobs
 };

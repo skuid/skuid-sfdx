@@ -181,6 +181,37 @@ describe('skuid:page:push', () => {
 
     test
         .withOrg({ username: 'test@org.com' }, true)
+        .withConnectionRequest(request => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expect(requestMap.body).to.deep.equal(JSON.stringify({
+                    changes: [
+                        Object.assign({}, JSON.parse(v2PageMetadata), { body: v2PageXml }),
+                        Object.assign({}, JSON.parse(v1PageMetadata), { body: v1PageXml }),
+                    ]
+                }));
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        })
+        .stdout()
+        .command([
+            'skuid:page:push',
+            '-u',
+            'test@org.com',
+            '-d',
+            'test',
+            '**/*',
+        ])
+        .it('should ignore non-Skuid metadata files', ctx => {
+            expect(ctx.stdout).to.contain('Found 2 matching pages within test, pushing changes to org...');
+            expect(ctx.stdout).to.contain('2 Pages successfully pushed.');
+        });
+
+    test
+        .withOrg({ username: 'test@org.com' }, true)
         .stdout()
         .command(['skuid:page:push', '--targetusername', 'test@org.com', 'test/fixtures/*BBBBBBBB*'])
         .it('should not make a request if no matching pages are found', ctx => {
