@@ -45,8 +45,9 @@ export default class Push extends SfdxCommand {
 
         const {
             json,
-            dir
+            dir,
         } = this.flags;
+        const logLevel = this.logger.getLevel();
         const filePaths = [];
 
         const shortFlagChars = new Set();
@@ -101,9 +102,18 @@ export default class Push extends SfdxCommand {
             }
         }
 
+        let loggedPageNames = false;
+        const logPageNames = () => {
+            if (!loggedPageNames) {
+                loggedPageNames = true;
+                pageDefinitions.forEach(pageDef => this.ux.log(` - ${getUniqueId(pageDef)}`));
+            }
+        }
+
         if (!json) {
             this.ux.log('Found ' + pageDefinitions.length + ' matching pages within ' + (dir ? dir : 'current directory') + ', pushing changes to org...');
-            this.logger.debug(pageDefinitions.map(getUniqueId));
+             // if at "info" log level or below, display the names of the pages
+            if (logLevel <= 30) logPageNames();
         }
 
         const pagePost = { changes: pageDefinitions } as PagePost;
@@ -117,6 +127,9 @@ export default class Push extends SfdxCommand {
         const result: PagePostResult = JSON.parse(resultJSON);
 
         if (!result.success) {
+            // If we haven't already, log the page names that were pushed,
+            // to help the user with debugging the cause of any issues
+            logPageNames();
             throw new SfdxError(result.upsertErrors.join(','), 'SkuidPagePushError', [], 1);
         }
 

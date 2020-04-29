@@ -3,6 +3,7 @@
     "name": "SomePageName",
     "module": "foo",
     "uniqueId": "foo_SomePageName",
-    "composerSettings": null,
-    "maxAutoSaves": 100
+    "composerSettings": "{}",
+    "maxAutoSaves": 100,
+    "isMasterPage": false
 }
