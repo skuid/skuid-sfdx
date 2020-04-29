@@ -98,7 +98,10 @@ OPTIONS
 
 EXAMPLES
   $ sfdx skuid:page:push --targetusername myOrg@example.com
-  $ sfdx skuid:page:push skuidpages/*SalesApp
+  $ sfdx skuid:page:push skuidpages/*
+  $ sfdx skuid:page:push -d=salespages SalesApp*
+  $ sfdx skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml
+  $ sfdx skuid:page:push **/*
 ```
 
 <!-- commandsstop -->
