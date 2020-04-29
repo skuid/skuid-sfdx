@@ -1,7 +1,7 @@
 {
   "name": "skuid-sfdx",
   "description": "SFDX plugin for managing Skuid metadata",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "author": "Skuid",
   "bugs": "https://github.com/skuid/skuid-sfdx/issues",
   "dependencies": {
