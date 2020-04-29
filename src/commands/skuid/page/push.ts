@@ -45,7 +45,7 @@ export default class Push extends SfdxCommand {
 
         const {
             json,
-            dir,
+            dir
         } = this.flags;
         const logLevel = this.logger.getLevel();
         const filePaths = [];
@@ -108,7 +108,7 @@ export default class Push extends SfdxCommand {
                 loggedPageNames = true;
                 pageDefinitions.forEach(pageDef => this.ux.log(` - ${getUniqueId(pageDef)}`));
             }
-        }
+        };
 
         if (!json) {
             this.ux.log('Found ' + pageDefinitions.length + ' matching pages within ' + (dir ? dir : 'current directory') + ', pushing changes to org...');
