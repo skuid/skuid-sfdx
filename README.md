@@ -116,6 +116,7 @@ To get started with contributing to this plugin locally, clone the repo and then
 ```sh-session
 git clone https://github.com/skuid/skuid-sfdx.git
 cd skuid-sfdx
+yarn
 sfdx plugins:link
 ```
 

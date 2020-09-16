@@ -1,4 +1,6 @@
 <skuid__page>
-    <models><model/></models>
+    <models>
+        <model/>
+    </models>
     <components/>
 </skuid__page>

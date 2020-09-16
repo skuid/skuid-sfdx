@@ -12,7 +12,8 @@
     "@salesforce/core": "^2",
     "json-stable-stringify": "^1.0.1",
     "node-glob": "^1.2.0",
-    "tslib": "^1"
+    "tslib": "^1",
+    "vkbeautify": "^0.99.3"
   },
   "devDependencies": {
     "@oclif/dev-cli": "^1",

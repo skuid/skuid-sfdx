@@ -2,6 +2,7 @@
 import { readFile } from 'fs';
 import * as glob from 'glob';
 import * as path from 'path';
+import { isValidPageXML } from '../helpers/xml';
 import { SkuidPage } from '../types/types';
 
 const REQUIRED_PAGE_PROPERTIES = [
@@ -110,18 +111,6 @@ function isValidPageJSONDefinition(pageDef) {
     return isValid;
 }
 
-/**
- * Performs a very basic sanity test on whether the input file is valid Skuid Page XML.
- * @param xml {String} Skuid Page XML
- * @returns {Boolean}
- */
-function isValidPageXML(xml) {
-    // Our goal here is just to prevent users from inadvertently grabbing non-Skuid XML files
-    // via a glob pattern. We will defer to server-side validation to ensure the XML is
-    // properly formatted.
-    const trimmed = xml.trim();
-    return trimmed.startsWith('<skuidpage') || trimmed.startsWith('<skuid__page');
-}
 /**
  *
  * @param {String} jsonFilePath
