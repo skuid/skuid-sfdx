@@ -1,6 +1,7 @@
 import { expect, test } from '@salesforce/command/lib/test';
 import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { SkuidPage, PagePost } from "../../../../src/types/types";
+import { condenseXml } from "../../../../src/helpers/xml";
 import { readFileSync } from 'fs';
 import { resolve, join } from 'path';
 const fixturesDir = resolve(__dirname, '../../../fixtures');
@@ -14,7 +15,9 @@ const expectPushPayloadToHavePages = (pushPayload:string, pages:SkuidPage[]) => 
     const payload:PagePost = JSON.parse(pushPayload) as PagePost;
     expect(payload).to.have.property("changes");
     expect(payload.changes.length).to.equal(pages.length);
-    expect(payload.changes).to.have.deep.members(pages);
+    expect(payload.changes).to.have.deep.members(
+        pages.map(p => Object.assign({}, p, { body: condenseXml(p.body) }))
+    );
 };
 
 describe('skuid:page:push', () => {
