@@ -2,6 +2,7 @@ import { flags, FlagsConfig, SfdxCommand } from '@salesforce/command';
 import { Messages, SfdxError } from '@salesforce/core';
 import { AnyJson } from '@salesforce/ts-types';
 import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
+import { condenseXml } from '../../../helpers/xml';
 import {
     PagePost,
     PagePostResult,
@@ -115,6 +116,12 @@ export default class Push extends SfdxCommand {
              // if at "info" log level or below, display the names of the pages
             if (logLevel <= 30) logPageNames();
         }
+
+        // Prior to sending the pages over the wire, condense the XML.
+        // This prevents us from having to waste Apex processing time as well as network bandwidth.
+        pageDefinitions.forEach(pageDefinition => {
+            pageDefinition.body = condenseXml(pageDefinition.body);
+        });
 
         const pagePost = { changes: pageDefinitions } as PagePost;
 

@@ -6,7 +6,7 @@ import { resolve } from 'path';
 import { stringify } from '../../../helpers/jsonStringify';
 import { param } from '../../../helpers/param';
 
-import { formatXml } from '../../../helpers/formatXml';
+import { formatXml } from '../../../helpers/xml';
 import {
   PullQueryParams,
   SkuidPage

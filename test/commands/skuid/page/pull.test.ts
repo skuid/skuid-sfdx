@@ -1,7 +1,7 @@
 import { expect, test } from '@salesforce/command/lib/test';
 import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { sync as rmSync } from 'rimraf';
-import { formatXml } from '../../../../src/helpers/formatXml';
+import { formatXml } from '../../../../src/helpers/xml';
 
 const v1PageObject = {
   "apiVersion": "v1",

@@ -2,12 +2,11 @@
 import * as stableStringify from 'json-stable-stringify';
 
 /**
- *
+ * Serializes an object to a JSON string using a stable, prioritized key ordering
  * @param obj - the object to be stringified
  * @returns {String} a JSON stringy
  */
-
-function stringify(obj) {
+function stringify(obj): string {
     return stableStringify(obj, {
         cmp(a, b) {
             // Prioritize name property
