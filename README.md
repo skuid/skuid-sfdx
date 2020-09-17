@@ -19,10 +19,9 @@ SFDX plugin for managing Skuid metadata
 <!-- install -->
 # Installation
 
- First, ensure you have [installed `sfdx`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
+First, ensure you have [installed `sfdx`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
 
-  Now, install the skuid-sfdx plugin:
-
+Now, install the skuid-sfdx plugin:
 
 ```sh-session
 echo 'y' | sfdx plugins:install skuid-sfdx
@@ -38,6 +37,16 @@ To use `skuid-sfdx` in a CI environment, you will either need to auto-trust the 
 
 <!-- usage -->
 # Usage
+
+To pull Skuid Pages from a Salesforce org to the filesystem, use the `skuid:page:pull` command. You can use various arguments to specify which Pages in the org you want to pull, and you can output the pages to a directory of your choice.
+
+For each Page, two files will be written:
+
+  - an XML file containing the Page's layout
+  - a JSON file containing metadata about the Page
+
+### Example
+
 ```sh-session
 
 $ sfdx skuid:page:pull
@@ -45,11 +54,19 @@ Wrote 85 pages to skuidpages
 
 $ sfdx skuid:page:pull --module SamplePages --dir pages/sample
 Wrote 4 pages to pages/sample
+```
+
+Page XML will be pretty-printed, with indentation automatically added, to make it easy to review and commit changes to Skuid Pages line-by-line to source control. (Note: tabs are used for indentation by default, but if you would like to use a different indentation, you can set the `SKUID_XML_INDENT` environment variable, e.g. `export SKUID_XML_INDENT="  "` to use 2 spaces instead of tabs.)
+
+Going the other direction, to move Skuid Pages from the filesystem up to a Salesforce org, use the `skuid:page:push` command. You can use file glob patterns to specify which Pages in your filesystem that you want to push, for example:
+
+```sh-session
 
 $ sfdx skuid:page:push salesapp/*Foo*
 3 Pages successfully pushed.
 
 ```
+
 <!-- usagestop -->
 
 <!-- commands -->

@@ -1,14 +1,15 @@
 import { xml, xmlmin } from 'vkbeautify';
 
-const PADDING = ' '.repeat(2); // set desired indent size here
-
 /**
  * Pretty-prints a string of XML, adding indentation and newlines between tags
  * @param condensedXml {String} Skuid Page XML
  * @returns {String}
  */
 function formatXml(condensedXml: string): string {
-    return xml(condensedXml, PADDING);
+    // For consistency across all of Skuid, use tabs for pretty printing of XML by default.
+    // However, allow for this to be configurable via an environment variable.
+    const indent = process.env.SKUID_XML_INDENT || '\t';
+    return xml(condensedXml, indent);
 }
 
 /**
