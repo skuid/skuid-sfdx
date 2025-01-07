@@ -24,9 +24,9 @@ export default class Pull extends SfCommand<AnyJson> {
   public static description = messages.getMessage('commandDescription');
 
   public static examples = [
-  '$ sfdx skuid:page:pull --targetusername myOrg@example.com --module CommunityPages',
-  '$ sfdx skuid:page:pull --nomodule',
-  '$ sfdx skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
+  '$ sf skuid:page:pull --targetusername myOrg@example.com --module CommunityPages',
+  '$ sf skuid:page:pull --nomodule',
+  '$ sf skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
   ];
 
   public static readonly flags = {
