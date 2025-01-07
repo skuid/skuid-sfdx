@@ -1,6 +1,10 @@
-import { expect, test } from '@salesforce/command/lib/test';
-import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
+import { Config } from '@oclif/core';
+import { resolve } from 'path';
 import { sync as rmSync } from 'rimraf';
+import { expect } from '@salesforce/command/lib/test';
+import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
+import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
+import Pull from "../../../../src/commands/skuid/page/pull";
 import { formatXml } from '../../../../src/helpers/xml';
 
 const v1PageObject = {
@@ -50,12 +54,41 @@ describe('skuid:page:pull', () => {
     rmSync('skuidpages');
   };
 
-  before(clean);
-  after(clean);
+  const $$ = new TestContext();
+  const testOrg = new MockTestOrgData();
+  const config = new Config({ root: resolve(__dirname, '../../../package.json') });
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+  beforeEach(async () => {
+    await $$.stubAuths(testOrg);
+    await config.load();
+    clean();
+  });
+
+  afterEach(async () => {
+    $$.restore();
+    clean();
+  });
+
+  // test
+  //   .withOrg({ username: 'test@org.com' }, true)
+  //   .withConnectionRequest(request => {
+  //     const requestMap = ensureJsonMap(request);
+  //     if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+  //       return Promise.resolve(JSON.stringify({
+  //         "foo_SomePageName": v1PageObject,
+  //         "_AnotherPageName": v2PageObject,
+  //       }));
+  //     }
+  //     return Promise.reject(new Error("Unexpected request"));
+  //   })
+  //   .stdout()
+  //   .command(['skuid:page:pull', '--targetusername', 'test@org.com'])
+  //   .it('runs skuid:page:pull with no page or module specified', ctx => {
+  //     expect(ctx.stdout).to.contain('Wrote 2 pages to skuidpages');
+  //   });
+
+  it('runs skuid:page:pull with no page or module specified', async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
@@ -64,16 +97,21 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com'])
-    .it('runs skuid:page:pull with no page or module specified', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 2 pages to skuidpages');
-    });
+    };
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ['skuid:page:pull', '--targetusername', 'test@org.com'],
+      config
+    );
+
+    const result = await cmd.run();
+    console.log(result, config, ctx)
+    expect(result).to.equal('jt tests');
+  });
+
+  //
+  it('only requests pages with no module, and respects dir ', async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?nomodule=true/)) {
         return Promise.resolve(JSON.stringify({
@@ -81,16 +119,21 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--nomodule', '--dir', 'foo'])
-    .it('only requests pages with no module, and respects dir ', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 1 pages to foo');
-    });
+    };
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ['skuid:page:pull', '--targetusername', 'test@org.com', '--nomodule', '--dir', 'foo'],
+      config
+    );
+
+    const result = await cmd.run();
+    console.log(result, config, ctx)
+    expect(result).to.contain('Wrote 1 pages to foo');
+  });
+
+  //
+  it('only requests pages in specified module', async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo/)) {
         return Promise.resolve(JSON.stringify({
@@ -98,16 +141,20 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo'])
-    .it('only requests pages in specified module', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
-    });
+    }
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo'],
+      config
+    );
+
+    const result = await cmd.run();
+    expect(result).to.contain('Wrote 1 pages to skuidpages');
+  });
+
+  ///    
+  it('removes unsafe directory characters from at-rest file names', async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
@@ -115,16 +162,20 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar\\baz'])
-    .it('removes unsafe directory characters from at-rest file names', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
-    });
+    }
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar\\baz'],
+      config
+    );
+
+    const result = await cmd.run();
+    expect(result).to.contain('Wrote 1 pages to skuidpages');
+  });
+
+  // test
+  it('only requests specific pages', async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?page=SomePageName%2CAnotherPageName/)) {
         return Promise.resolve(JSON.stringify({
@@ -133,16 +184,20 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--page', 'SomePageName,AnotherPageName'])
-    .it('only requests specific pages', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 2 pages to skuidpages');
-    });
+    }
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ['skuid:page:pull', '--targetusername', 'test@org.com', '--page', 'SomePageName,AnotherPageName'],
+      config
+    );
+
+    const result = await cmd.run();
+    expect(result).to.contain('Wrote 2 pages to skuidpages');
+  });
+
+  // test
+  it('returns results as json', async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
@@ -151,25 +206,28 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--json'])
-    .it('returns results as json', ctx => {
-      const jsonOutput = JSON.parse(ctx.stdout);
-      expect(jsonOutput).to.deep.equal({
-        status: 0,
-        result: {
-          pages: {
-            "foo_SomePageName": v1PageWithPrettyXML,
-            "AnotherPageName": v2PageWithPrettyXML,
-          }
-        }
-      });
-    });
+    }
 
-  test
-    .withOrg({ username: "test@org.com" }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ['skuid:page:pull', '--targetusername', 'test@org.com', '--json'],
+      config
+    );
+
+    const jsonOutput = await cmd.run();
+    expect(jsonOutput).to.deep.equal({
+      status: 0,
+      result: {
+        pages: {
+          "foo_SomePageName": v1PageWithPrettyXML,
+          "AnotherPageName": v2PageWithPrettyXML,
+        }
+      }
+    });
+  });
+
+  // test
+  it("removes unsafe directory characters from at-rest file names in json output", async ctx => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
@@ -177,19 +235,22 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(["skuid:page:pull", "--targetusername", "test@org.com", "--json", '--module', "foo/bar\\baz"])
-    .it("removes unsafe directory characters from at-rest file names in json output", ctx => {
-      const jsonOutput = JSON.parse(ctx.stdout);
-      expect(jsonOutput).to.deep.equal({
-        status: 0,
-        result: {
-          pages: {
-            "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
-          }
+    }
+
+    const cmd = new Pull(
+      ["skuid:page:pull", "--targetusername", "test@org.com", "--json", '--module', "foo/bar\\baz"],
+      config
+    );
+
+    const jsonOutput = await cmd.run();
+    expect(jsonOutput).to.deep.equal({
+      status: 0,
+      result: {
+        pages: {
+          "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
         }
-      });
+      }
     });
+  });
 
 });

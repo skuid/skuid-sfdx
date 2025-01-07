@@ -1,5 +1,5 @@
-import { flags, SfdxCommand } from '@salesforce/command';
 import { Messages } from '@salesforce/core';
+import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson, JsonMap } from '@salesforce/ts-types';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
@@ -19,7 +19,7 @@ Messages.importMessagesDirectory(__dirname);
 // or any library that is using the messages framework can also be loaded this way.
 const messages = Messages.loadMessages('skuid-sfdx', 'skuid-page-pull');
 
-export default class Pull extends SfdxCommand {
+export default class Pull extends SfCommand<AnyJson> {
 
   public static description = messages.getMessage('commandDescription');
 
@@ -29,37 +29,47 @@ export default class Pull extends SfdxCommand {
   '$ sfdx skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
   ];
 
-  public static args = [];
+  public static readonly flags = {
+    module: Flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
+    page: Flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
+    nomodule: Flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
+    dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+    // 'target-org': requiredOrgFlagWithDeprecations,
+    // 'api-version': orgApiVersionFlagWithDeprecations
+  };
 
   protected static flagsConfig = {
     // flag with a value (-n, --name=VALUE)
-    module: flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
-    page: flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
-    nomodule: flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
-    dir: flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+    module: Flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
+    page: Flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
+    nomodule: Flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
+    dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
   };
 
   // Our command requires an SFDX username
   protected static requiresUsername = true;
 
   public async run(): Promise<AnyJson> {
+    const { flags } = await this.parse(Pull);
     const {
       json,
       module,
       nomodule,
       page
-    } = this.flags;
+    } = flags;
 
-    let { dir } = this.flags;
+    let dir = flags.dir as string;
     if (!dir) dir = 'skuidpages';
 
     const queryParams = {} as PullQueryParams;
 
     if (nomodule) queryParams.nomodule = true;
-    if (module) queryParams.module = module;
-    if (page) queryParams.page = page;
+    if (typeof module === 'string') queryParams.module = module;
+    if (typeof page === 'string') queryParams.page = page;
 
-    const conn = this.org.getConnection();
+    // when you get a Connection, pass the api-version flag to it
+    // that way, if the user specified an api version, the Connection is set
+    const conn = flags['target-org'].getConnection(flags['api-version']);
 
     let resultJSON: string = await conn.apex.get(`/skuid/api/v1/pages?${param(queryParams)}`);
 
@@ -88,7 +98,7 @@ export default class Pull extends SfdxCommand {
     }
 
     // Otherwise, write a .json and .xml file in the specified output directory for every retrieved file.
-    if (!existsSync(dir)) mkdirSync(dir);
+    if (typeof dir === 'string' && !existsSync(dir)) mkdirSync(dir);
 
     const skuidPages: Map<string, SkuidPage> = JSON.parse(resultJSON);
     // Clear out heap
@@ -114,7 +124,8 @@ export default class Pull extends SfdxCommand {
       // Clear out memory from our response
       delete skuidPages[pageName];
     });
-    this.ux.log('Wrote ' + numPages + ' pages to ' + dir);
+
+    this.log('Wrote ' + numPages + ' pages to ' + dir);
 
     return {};
   }
@@ -123,7 +134,7 @@ export default class Pull extends SfdxCommand {
     try {
       xml = formatXml(xml);
     } catch (err) {
-      this.ux.error(`Page ${pageName} has invalid XML.`);
+      this.error(`Page ${pageName} has invalid XML.`);
     }
     return xml;
   }
