@@ -1,5 +1,5 @@
-import { flags, FlagsConfig, SfdxCommand } from '@salesforce/command';
-import { Messages, SfdxError } from '@salesforce/core';
+import { Logger, Messages, SfError } from '@salesforce/core';
+import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson } from '@salesforce/ts-types';
 import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
 import { condenseXml } from '../../../helpers/xml';
@@ -17,8 +17,7 @@ Messages.importMessagesDirectory(__dirname);
 const messages = Messages.loadMessages('skuid-sfdx', 'skuid-page-push');
 const getUniqueId = (page: SkuidPage) => page.uniqueId.startsWith('_') ? page.uniqueId.substring(1) : page.uniqueId;
 
-export default class Push extends SfdxCommand {
-
+export default class Push extends SfCommand<AnyJson> {
     public static description = messages.getMessage('commandDescription');
 
     public static examples = [
@@ -35,25 +34,26 @@ export default class Push extends SfdxCommand {
     public static strict = false;
     public static args = [{ name: 'file' }];
 
-    protected static flagsConfig = {
-        dir: flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+    public static readonly flags = {
+        dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
     };
 
     // Our command requires an SFDX username
     protected static requiresUsername = true;
 
     public async run(): Promise<AnyJson> {
-
+        const { flags } = await this.parse(Push);
         const {
             json,
             dir
-        } = this.flags;
-        const logLevel = this.logger.getLevel();
+        } = flags;
+        const logger = await Logger.root();
+        const logLevel = logger.getLevel();
         const filePaths = [];
 
         const shortFlagChars = new Set();
-        for (const flagConfig of Object.values(Push.flagsConfig)) {
-            const config = flagConfig as unknown as FlagsConfig;
+        for (const flagConfig of Object.values(Push.flags)) {
+            const config = flagConfig;
             shortFlagChars.add(config.char);
         }
 
@@ -64,7 +64,7 @@ export default class Push extends SfdxCommand {
             if (equalsIndex === -1) equalsIndex = arg.length;
             const isArg =
                 // Long-form args
-                (arg.startsWith('--') && this.flags[arg.substring(2, equalsIndex)]) ||
+                (arg.startsWith('--') && Flags[arg.substring(2, equalsIndex)]) ||
                 // Short-form args
                 (
                     arg.startsWith('-') &&
@@ -98,7 +98,7 @@ export default class Push extends SfdxCommand {
                     success: false
                 };
             } else {
-                this.ux.log('Found no matching pages in the provided file paths.');
+                this.log('Found no matching pages in the provided file paths.');
                 return {};
             }
         }
@@ -107,12 +107,12 @@ export default class Push extends SfdxCommand {
         const logPageNames = () => {
             if (!loggedPageNames) {
                 loggedPageNames = true;
-                pageDefinitions.forEach(pageDef => this.ux.log(` - ${getUniqueId(pageDef)}`));
+                pageDefinitions.forEach(pageDef => this.log(` - ${getUniqueId(pageDef)}`));
             }
         };
 
         if (!json) {
-            this.ux.log('Found ' + pageDefinitions.length + ' matching pages within ' + (dir ? dir : 'current directory') + ', pushing changes to org...');
+            this.log('Found ' + pageDefinitions.length + ' matching pages within ' + (dir ? dir : 'current directory') + ', pushing changes to org...');
              // if at "info" log level or below, display the names of the pages
             if (logLevel <= 30) logPageNames();
         }
@@ -125,7 +125,7 @@ export default class Push extends SfdxCommand {
 
         const pagePost = { changes: pageDefinitions } as PagePost;
 
-        const conn = this.org.getConnection();
+        const conn = flags['target-org'].getConnection(flags['api-version']);
         const resultJSON: string = await conn.apex.post('/skuid/api/v1/pages', pagePost, {
             headers: {
                 'Content-Type': 'application/json'
@@ -137,14 +137,14 @@ export default class Push extends SfdxCommand {
             // If we haven't already, log the page names that were pushed,
             // to help the user with debugging the cause of any issues
             logPageNames();
-            throw new SfdxError(result.upsertErrors.join(','), 'SkuidPagePushError', [], 1);
+            throw new SfError(result.upsertErrors.join(','), 'SkuidPagePushError', [], 1);
         }
 
         if (json) {
             result.pages = pageDefinitions.map(getUniqueId);
             return result;
         } else {
-            this.ux.log(pageDefinitions.length + ' Pages successfully pushed.');
+            this.log(pageDefinitions.length + ' Pages successfully pushed.');
         }
 
         return {};
