@@ -21,11 +21,11 @@ export default class Push extends SfCommand<AnyJson> {
     public static description = messages.getMessage('commandDescription');
 
     public static examples = [
-        '$ sfdx skuid:page:push -u=myOrg@example.com *SalesApp*',
-        '$ sfdx skuid:page:push skuidpages/SalesApp*',
-        '$ sfdx skuid:page:push -d=salespages SalesApp*',
-        '$ sfdx skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml',
-        '$ sfdx skuid:page:push **/*.xml'
+        '$ sf skuid:page:push -u=myOrg@example.com *SalesApp*',
+        '$ sf skuid:page:push skuidpages/SalesApp*',
+        '$ sf skuid:page:push -d=salespages SalesApp*',
+        '$ sf skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml',
+        '$ sf skuid:page:push **/*.xml'
     ];
 
     // Allow a variable number of arguments to allow shells to auto-expand globs,

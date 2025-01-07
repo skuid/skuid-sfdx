@@ -69,24 +69,6 @@ describe('skuid:page:pull', () => {
     clean();
   });
 
-  // test
-  //   .withOrg({ username: 'test@org.com' }, true)
-  //   .withConnectionRequest(request => {
-  //     const requestMap = ensureJsonMap(request);
-  //     if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-  //       return Promise.resolve(JSON.stringify({
-  //         "foo_SomePageName": v1PageObject,
-  //         "_AnotherPageName": v2PageObject,
-  //       }));
-  //     }
-  //     return Promise.reject(new Error("Unexpected request"));
-  //   })
-  //   .stdout()
-  //   .command(['skuid:page:pull', '--targetusername', 'test@org.com'])
-  //   .it('runs skuid:page:pull with no page or module specified', ctx => {
-  //     expect(ctx.stdout).to.contain('Wrote 2 pages to skuidpages');
-  //   });
-
   it('runs skuid:page:pull with no page or module specified', async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -105,11 +87,9 @@ describe('skuid:page:pull', () => {
     );
 
     const result = await cmd.run();
-    console.log(result, config, ctx)
-    expect(result).to.equal('jt tests');
+    expect(result).to.equal('Wrote 2 pages to skuidpages');
   });
 
-  //
   it('only requests pages with no module, and respects dir ', async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -127,11 +107,9 @@ describe('skuid:page:pull', () => {
     );
 
     const result = await cmd.run();
-    console.log(result, config, ctx)
     expect(result).to.contain('Wrote 1 pages to foo');
   });
 
-  //
   it('only requests pages in specified module', async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -151,8 +129,7 @@ describe('skuid:page:pull', () => {
     const result = await cmd.run();
     expect(result).to.contain('Wrote 1 pages to skuidpages');
   });
-
-  ///    
+  
   it('removes unsafe directory characters from at-rest file names', async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -173,7 +150,6 @@ describe('skuid:page:pull', () => {
     expect(result).to.contain('Wrote 1 pages to skuidpages');
   });
 
-  // test
   it('only requests specific pages', async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -195,7 +171,6 @@ describe('skuid:page:pull', () => {
     expect(result).to.contain('Wrote 2 pages to skuidpages');
   });
 
-  // test
   it('returns results as json', async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -225,7 +200,6 @@ describe('skuid:page:pull', () => {
     });
   });
 
-  // test
   it("removes unsafe directory characters from at-rest file names in json output", async ctx => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -252,5 +226,4 @@ describe('skuid:page:pull', () => {
       }
     });
   });
-
 });
