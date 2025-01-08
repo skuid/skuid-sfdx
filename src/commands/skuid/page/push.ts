@@ -1,5 +1,5 @@
 import { Logger, Messages, SfError } from '@salesforce/core';
-import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
+import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson } from '@salesforce/ts-types';
 import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
 import { condenseXml } from '../../../helpers/xml';
@@ -21,11 +21,11 @@ export default class Push extends SfCommand<AnyJson> {
     public static description = messages.getMessage('commandDescription');
 
     public static examples = [
-        '$ sf skuid:page:push -u=myOrg@example.com *SalesApp*',
-        '$ sf skuid:page:push skuidpages/SalesApp*',
-        '$ sf skuid:page:push -d=salespages SalesApp*',
-        '$ sf skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml',
-        '$ sf skuid:page:push **/*.xml'
+        '$ sf skuid page push -u=myOrg@example.com *SalesApp*',
+        '$ sf skuid page push skuidpages/SalesApp*',
+        '$ sf skuid page push -d=salespages SalesApp*',
+        '$ sf skuid page push pages/SalesAppHome.xml pages/CommissionDetails.xml',
+        '$ sf skuid page push **/*.xml'
     ];
 
     // Allow a variable number of arguments to allow shells to auto-expand globs,
@@ -35,7 +35,9 @@ export default class Push extends SfCommand<AnyJson> {
     public static args = [{ name: 'file' }];
 
     public static readonly flags = {
-        dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+        dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') }),
+        'target-org': requiredOrgFlagWithDeprecations,
+        'api-version': orgApiVersionFlagWithDeprecations
     };
 
     // Our command requires an SFDX username

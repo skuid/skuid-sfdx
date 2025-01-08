@@ -1,5 +1,5 @@
 import { Messages } from '@salesforce/core';
-import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
+import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson, JsonMap } from '@salesforce/ts-types';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
@@ -30,20 +30,13 @@ export default class Pull extends SfCommand<AnyJson> {
   ];
 
   public static readonly flags = {
-    module: Flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
-    page: Flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
-    nomodule: Flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
-    dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
-    // 'target-org': requiredOrgFlagWithDeprecations,
-    // 'api-version': orgApiVersionFlagWithDeprecations
-  };
-
-  protected static flagsConfig = {
     // flag with a value (-n, --name=VALUE)
     module: Flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
     page: Flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
     nomodule: Flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
-    dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+    dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') }),
+    'target-org': requiredOrgFlagWithDeprecations,
+    'api-version': orgApiVersionFlagWithDeprecations
   };
 
   // Our command requires an SFDX username

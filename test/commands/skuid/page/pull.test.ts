@@ -1,7 +1,8 @@
 import { Config } from '@oclif/core';
 import { resolve } from 'path';
 import { sync as rmSync } from 'rimraf';
-import { expect } from '@salesforce/command/lib/test';
+// import { expect } from '@salesforce/command/lib/test';
+import { expect } from 'chai';
 import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import Pull from "../../../../src/commands/skuid/page/pull";
@@ -47,7 +48,7 @@ const v1PageObjectWithSlashModulePrettyXML = Object.assign({}, v1PageObjectWithS
   body: formatXml(v1PageObjectWithSlashModule.body)
 });
 
-describe('skuid:page:pull', () => {
+describe('skuid page pull', () => {
 
   const clean = () => {
     rmSync('foo');
