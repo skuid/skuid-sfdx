@@ -58,7 +58,7 @@ describe('skuid:page:push', () => {
             expect(jsonOutput).to.deep.equal({
                 status: 0,
                 result: {
-                    pages: [ 'AnotherPageName', 'foo_SomePageName' ],
+                    pages: [ 'foo_SomePageName', 'AnotherPageName' ],
                     success: true
                 }
             });
