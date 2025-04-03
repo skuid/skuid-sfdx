@@ -40,6 +40,8 @@ jobs:
           name: Install dependencies
           command: yarn
           shell: bash.exe
+        environment:
+          PATH: "C:\\Program Files\\nodejs;C:\\Users\\circleci\\AppData\\Roaming\\npm;${PATH}"
       - run:
           name: Testing
           command: yarn test
