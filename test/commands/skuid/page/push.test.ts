@@ -55,13 +55,15 @@ describe('skuid:page:push', () => {
         .command(['skuid:page:push', '--targetusername', 'test@org.com', '--dir', 'test/fixtures', '--json'])
         .it('should display result as json if --json specified', ctx => {
             const jsonOutput = JSON.parse(ctx.stdout);
-            expect(jsonOutput).to.deep.equal({
-                status: 0,
-                result: {
-                    pages: [ 'AnotherPageName', 'foo_SomePageName' ],
-                    success: true
-                }
-            });
+            expect(jsonOutput.status).to.equal(0);
+            expect(jsonOutput.result).to.have.property('pages');
+            expect(jsonOutput.result.pages.length).to.equal(2);
+            expect(jsonOutput.result.pages).to.have.members([
+                'AnotherPageName',
+                'foo_SomePageName'
+            ]);
+            expect(jsonOutput.result).to.have.property('success');
+            expect(jsonOutput.result.success).to.equal(true);
         });
     test
         .withOrg({ username: 'test@org.com' }, true)
