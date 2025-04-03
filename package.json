@@ -25,15 +25,17 @@
     "@salesforce/prettier-config": "^0.0.2",
     "@salesforce/ts-sinon": "^1.4.1",
     "@types/chai": "^4",
-    "@types/mocha": "^5",
-    "@types/node": "^10",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.14.0",
+    "@types/vkbeautify": "^0.99.4",
     "chai": "^4",
     "globby": "^14.0.2",
-    "mocha": "^5.2.0",
+    "mocha": "^11.1.0",
     "nyc": "^17.1.0",
     "rimraf": "^3.0.2",
-    "ts-node": "^8.10.2",
-    "tslint": "^5"
+    "ts-node": "^10.9.2",
+    "tslint": "^5",
+    "typescript": "^5.8.2"
   },
   "engines": {
     "node": ">=8.0.0"
@@ -70,7 +72,7 @@
     "postpack": "rm -f oclif.manifest.json",
     "posttest": "tslint -p test -t stylish",
     "prepack": "rm -rf lib && tsc -b && oclif-dev manifest",
-    "test": "nyc --reporter=lcov --reporter=text --extension .ts mocha --forbid-only \"test/**/*.test.ts\"",
+    "test": "mocha -r ts-node/register test/**/*.test.ts",
     "version": "oclif-dev readme && git add README.md"
   }
 }
