@@ -1,12 +1,11 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
-    branches:
-      - main
+    types: [opened, synchronize, reopened]
 
 jobs:
   node-latest:
