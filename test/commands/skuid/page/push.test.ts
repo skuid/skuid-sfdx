@@ -55,10 +55,10 @@ describe('skuid:page:push', () => {
         .command(['skuid:page:push', '--targetusername', 'test@org.com', '--dir', 'test/fixtures', '--json'])
         .it('should display result as json if --json specified', ctx => {
             const jsonOutput = JSON.parse(ctx.stdout);
-            expect(jsonOutput).to.deep.equal({
+            expect(jsonOutput).to.equal({
                 status: 0,
                 result: {
-                    pages: [ 'foo_SomePageName', 'AnotherPageName' ],
+                    pages: [ 'AnotherPageName', 'foo_SomePageName' ],
                     success: true
                 }
             });
