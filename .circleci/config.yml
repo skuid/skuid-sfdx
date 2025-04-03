@@ -22,10 +22,6 @@ jobs:
       - run:
           name: Uploading to codecov
           command: bash <(curl -s https://codecov.io/bash)
-  node-10:
-    <<: *test
-    docker:
-      - image: node:10
   node-latest-windows:
     executor:
       name: win/default
@@ -67,7 +63,6 @@ workflows:
   "skuid-sfdx":
     jobs:
       - node-latest
-      - node-10
       - node-latest-windows
       - cache:
           filters:
