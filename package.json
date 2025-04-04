@@ -32,7 +32,7 @@
     "globby": "^14.0.2",
     "mocha": "^11.1.0",
     "nyc": "^17.1.0",
-    "rimraf": "^3.0.2",
+    "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "tslint": "^5",
     "typescript": "^5.8.2"
@@ -72,7 +72,7 @@
     "postpack": "rm -f oclif.manifest.json",
     "posttest": "tslint -p test -t stylish",
     "prepack": "rm -rf lib && tsc -b && oclif-dev manifest",
-    "test": "mocha -r ts-node/register test/**/*.test.ts",
+    "test": "nyc mocha",
     "version": "oclif-dev readme && git add README.md"
   }
 }
