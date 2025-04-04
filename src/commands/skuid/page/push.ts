@@ -1,5 +1,5 @@
-import { flags, FlagsConfig, SfdxCommand } from '@salesforce/command';
-import { Messages, SfdxError } from '@salesforce/core';
+import { Logger, Messages, SfError } from '@salesforce/core';
+import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson } from '@salesforce/ts-types';
 import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
 import { condenseXml } from '../../../helpers/xml';
@@ -8,6 +8,7 @@ import {
     PagePostResult,
     SkuidPage
 } from '../../../types/types';
+import { ArgInput } from '@oclif/core/lib/interfaces/parser';
 
 // Initialize Messages with the current plugin directory
 Messages.importMessagesDirectory(__dirname);
@@ -15,45 +16,53 @@ Messages.importMessagesDirectory(__dirname);
 // Load the specific messages for this file. Messages from @salesforce/command, @salesforce/core,
 // or any library that is using the messages framework can also be loaded this way.
 const messages = Messages.loadMessages('skuid-sfdx', 'skuid-page-push');
-const getUniqueId = (page: SkuidPage) => page.uniqueId.startsWith('_') ? page.uniqueId.substring(1) : page.uniqueId;
+const getUniqueId = (page: SkuidPage) => page.uniqueId?.startsWith('_') ? page.uniqueId.substring(1) : page.uniqueId || "";
 
-export default class Push extends SfdxCommand {
-
+export default class Push extends SfCommand<AnyJson> {
     public static description = messages.getMessage('commandDescription');
 
     public static examples = [
-        '$ sfdx skuid:page:push -u=myOrg@example.com *SalesApp*',
-        '$ sfdx skuid:page:push skuidpages/SalesApp*',
-        '$ sfdx skuid:page:push -d=salespages SalesApp*',
-        '$ sfdx skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml',
-        '$ sfdx skuid:page:push **/*.xml'
+        '$ sf skuid page push -u=myOrg@example.com *SalesApp*',
+        '$ sf skuid page push skuidpages/SalesApp*',
+        '$ sf skuid page push -d=salespages SalesApp*',
+        '$ sf skuid page push pages/SalesAppHome.xml pages/CommissionDetails.xml',
+        '$ sf skuid page push **/*.xml'
     ];
 
     // Allow a variable number of arguments to allow shells to auto-expand globs,
     // e.g. zsh may expand the single arg "foo/sample*" into separate arguments
     /// "foo/sample1.xml foo/sample1.json foo/sample2.json foo/sample2.xml"
     public static strict = false;
-    public static args = [{ name: 'file' }];
+    public static args: ArgInput = {
+        file: {
+            name: 'file',
+            input: [],
+            parse: async (input: string) => input
+        }
+    };
 
-    protected static flagsConfig = {
-        dir: flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+    public static readonly flags = {
+        dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') }),
+        // 'target-org': requiredOrgFlagWithDeprecations,
+        // 'api-version': orgApiVersionFlagWithDeprecations
     };
 
     // Our command requires an SFDX username
     protected static requiresUsername = true;
 
     public async run(): Promise<AnyJson> {
-
+        const { flags } = await this.parse(Push);
         const {
             json,
             dir
-        } = this.flags;
-        const logLevel = this.logger.getLevel();
+        } = flags;
+        const logger = await Logger.root();
+        const logLevel = logger.getLevel();
         const filePaths = [];
 
         const shortFlagChars = new Set();
-        for (const flagConfig of Object.values(Push.flagsConfig)) {
-            const config = flagConfig as unknown as FlagsConfig;
+        for (const flagConfig of Object.values(Push.flags)) {
+            const config = flagConfig;
             shortFlagChars.add(config.char);
         }
 
@@ -62,9 +71,10 @@ export default class Push extends SfdxCommand {
             if (!arg || !arg.length) continue;
             let equalsIndex = arg.indexOf('=');
             if (equalsIndex === -1) equalsIndex = arg.length;
+            const flagArg = arg.substring(2, equalsIndex) as keyof typeof Push.flags;
             const isArg =
                 // Long-form args
-                (arg.startsWith('--') && this.flags[arg.substring(2, equalsIndex)]) ||
+                (arg.startsWith('--') && Push.flags[flagArg]) ||
                 // Short-form args
                 (
                     arg.startsWith('-') &&
@@ -98,7 +108,7 @@ export default class Push extends SfdxCommand {
                     success: false
                 };
             } else {
-                this.ux.log('Found no matching pages in the provided file paths.');
+                this.log('Found no matching pages in the provided file paths.');
                 return {};
             }
         }
@@ -107,12 +117,12 @@ export default class Push extends SfdxCommand {
         const logPageNames = () => {
             if (!loggedPageNames) {
                 loggedPageNames = true;
-                pageDefinitions.forEach(pageDef => this.ux.log(` - ${getUniqueId(pageDef)}`));
+                pageDefinitions.forEach(pageDef => this.log(` - ${getUniqueId(pageDef)}`));
             }
         };
 
         if (!json) {
-            this.ux.log('Found ' + pageDefinitions.length + ' matching pages within ' + (dir ? dir : 'current directory') + ', pushing changes to org...');
+            this.log('Found ' + pageDefinitions.length + ' matching pages within ' + (dir ? dir : 'current directory') + ', pushing changes to org...');
              // if at "info" log level or below, display the names of the pages
             if (logLevel <= 30) logPageNames();
         }
@@ -125,7 +135,7 @@ export default class Push extends SfdxCommand {
 
         const pagePost = { changes: pageDefinitions } as PagePost;
 
-        const conn = this.org.getConnection();
+        const conn = flags['target-org'].getConnection(flags['api-version']);
         const resultJSON: string = await conn.apex.post('/skuid/api/v1/pages', pagePost, {
             headers: {
                 'Content-Type': 'application/json'
@@ -137,14 +147,14 @@ export default class Push extends SfdxCommand {
             // If we haven't already, log the page names that were pushed,
             // to help the user with debugging the cause of any issues
             logPageNames();
-            throw new SfdxError(result.upsertErrors.join(','), 'SkuidPagePushError', [], 1);
+            throw new SfError(result.upsertErrors.join(','), 'SkuidPagePushError', [], 1);
         }
 
         if (json) {
             result.pages = pageDefinitions.map(getUniqueId);
             return result;
         } else {
-            this.ux.log(pageDefinitions.length + ' Pages successfully pushed.');
+            this.log(pageDefinitions.length + ' Pages successfully pushed.');
         }
 
         return {};

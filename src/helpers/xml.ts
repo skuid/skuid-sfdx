@@ -18,7 +18,7 @@ function formatXml(condensedXml: string): string {
  * @param prettyXml {String} Skuid Page XML
  * @returns {String}
  */
-function condenseXml(prettyXml: string): string {
+function condenseXml(prettyXml:string = ""): string {
     return xmlmin(prettyXml);
 }
 

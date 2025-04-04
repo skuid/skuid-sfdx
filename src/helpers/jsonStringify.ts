@@ -1,12 +1,13 @@
 
-import * as stableStringify from 'json-stable-stringify';
+import stableStringify from 'json-stable-stringify';
+import { SkuidPage } from '../types/types';
 
 /**
  * Serializes an object to a JSON string using a stable, prioritized key ordering
  * @param obj - the object to be stringified
  * @returns {String} a JSON stringy
  */
-function stringify(obj): string {
+function stringify(obj:SkuidPage):string {
     return stableStringify(obj, {
         cmp(a, b) {
             // Prioritize name property
@@ -17,7 +18,7 @@ function stringify(obj): string {
         },
         // Use tabs
         space: '\t'
-    });
+    }) || "";
 }
 
 export {
