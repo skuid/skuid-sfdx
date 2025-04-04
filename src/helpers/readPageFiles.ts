@@ -1,7 +1,7 @@
 
 import { readFile } from 'fs';
-import * as glob from 'glob';
-import * as path from 'path';
+import glob from 'glob';
+import path from 'path';
 import { isValidPageXML } from '../helpers/xml';
 import { SkuidPage } from '../types/types';
 
@@ -34,10 +34,11 @@ async function globAsync(filePath: string, opts: GlobOptions) {
 
 /**
  * @param {String[]} filePaths - an array of file paths / globs, optionally within a source directory.
+ * @param {String} sourceDirectory - the source directory to use as a base for the globs
  * @returns {SkuidPage[]}
  */
 
-async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
+async function getPageDefinitionsFromFileGlobs(filePaths:string[], sourceDirectory?:string) {
     const opts = {} as GlobOptions;
     if (sourceDirectory) opts.cwd = sourceDirectory;
 
@@ -69,7 +70,7 @@ async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
                 try {
                     result = await getPageDefinitionFromJsonPath(path.resolve(sourceDirectory || '', f));
                     pageDefinitions.push(result);
-                } catch (e) {
+                } catch (e:any) {
                     if ([
                         INVALID_PAGE_XML,
                         INVALID_PAGE_JSON
@@ -84,7 +85,7 @@ async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
     return pageDefinitions;
 }
 
-async function getFileBody(filePath) {
+async function getFileBody(filePath:string):Promise<string> {
     return new Promise((resolve, reject) => {
         readFile(filePath, 'utf8', (err, fileBody) => {
             if (err) reject(err);
@@ -98,7 +99,7 @@ async function getFileBody(filePath) {
  * @param pageDef {SkuidPage} pageDef - a potential Skuid Page JSON definition
  * @returns {Boolean}
  */
-function isValidPageJSONDefinition(pageDef) {
+function isValidPageJSONDefinition(pageDef:SkuidPage) {
     // Our goal here is just to prevent users from inadvertently grabbing non-Skuid JSON files
     // via a glob pattern. We will defer to server-side validation to ensure the JSON is
     // properly formatted.
@@ -117,7 +118,7 @@ function isValidPageJSONDefinition(pageDef) {
  * @returns {SkuidPage} a Skuid Page definition
  * @throws Exception if the input file path corresponds to invalid Skuid Page JSON / XML
  */
-async function getPageDefinitionFromJsonPath(jsonFilePath) {
+async function getPageDefinitionFromJsonPath(jsonFilePath:string) {
     const results = await Promise.all([
         getFileBody(jsonFilePath.replace('.json', '.xml')).catch(() => ''),
         getFileBody(jsonFilePath).catch(() => '')

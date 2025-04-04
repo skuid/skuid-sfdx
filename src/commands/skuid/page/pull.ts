@@ -1,6 +1,6 @@
 import { Messages } from '@salesforce/core';
-import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
-import { AnyJson, JsonMap } from '@salesforce/ts-types';
+import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
+import { AnyJson } from '@salesforce/ts-types';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { stringify } from '../../../helpers/jsonStringify';
@@ -11,6 +11,10 @@ import {
   PullQueryParams,
   SkuidPage
 } from '../../../types/types';
+
+interface JsonResponse {
+  [pageName:string]: SkuidPage;
+};
 
 // Initialize Messages with the current plugin directory
 Messages.importMessagesDirectory(__dirname);
@@ -35,8 +39,11 @@ export default class Pull extends SfCommand<AnyJson> {
     page: Flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
     nomodule: Flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
     dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') }),
-    'target-org': requiredOrgFlagWithDeprecations,
-    'api-version': orgApiVersionFlagWithDeprecations
+    // 'target-org': Flags.requiredOrg(),
+    // 'api-version': Flags.orgApiVersion({
+    //   char: 'a',
+    //   default: 'v57.0',
+    // }),
   };
 
   // Our command requires an SFDX username
@@ -70,11 +77,12 @@ export default class Pull extends SfCommand<AnyJson> {
     // but trim off leading _ from the page names,
     // which will happen for pages not in a module
     if (json) {
-      const result: JsonMap = JSON.parse(resultJSON);
+      const result:JsonResponse = JSON.parse(resultJSON);
       Object.keys(result).forEach(pageName => {
-        const pageResult = result[pageName];
+        const pageResult = result[pageName] || {};
         const xmlKey = pageResult.hasOwnProperty('body') ? 'body' : 'content';
-        pageResult[xmlKey] = this.beautifyXml(pageResult[xmlKey], pageName);
+        const currentXml = pageResult[xmlKey];
+        pageResult[xmlKey] = this.beautifyXml(currentXml || "", pageName);
         if (pageName.startsWith('_')) {
           result[pageName.substring(1)] = pageResult;
           delete result[pageName];
@@ -87,15 +95,15 @@ export default class Pull extends SfCommand<AnyJson> {
       });
       return {
         pages: result
-      };
+      } as AnyJson;
     }
 
     // Otherwise, write a .json and .xml file in the specified output directory for every retrieved file.
     if (typeof dir === 'string' && !existsSync(dir)) mkdirSync(dir);
 
-    const skuidPages: Map<string, SkuidPage> = JSON.parse(resultJSON);
+    const skuidPages:JsonResponse = JSON.parse(resultJSON);
     // Clear out heap
-    resultJSON = null;
+    resultJSON = "";
     let numPages: number = 0;
 
     Object.entries(skuidPages).forEach(([ pageName, skuidPage]) => {
@@ -104,13 +112,14 @@ export default class Pull extends SfCommand<AnyJson> {
       if (pageName.startsWith('_')) pageName = pageName.substring(1);
       pageName = pageName.replace(/[\/\\]/g, '');
       const pageBasePath: string = resolve(dir, pageName);
-      const xml: string = skuidPage.body || skuidPage.content;
+      const xml: string = skuidPage.body || skuidPage.content || "";
       writeFileSync(pageBasePath + '.xml', this.beautifyXml(xml, pageName), 'utf8');
       delete skuidPage.body;
       delete skuidPage.content;
       // Remove all null props
       for (const prop in skuidPage) {
-        if (skuidPage[prop] === null ) delete skuidPage[prop];
+        const propKey = prop as keyof SkuidPage;
+        if (skuidPage[propKey] === null) delete skuidPage[propKey];
       }
       // Serialize using a stable sorting algorithm
       writeFileSync(pageBasePath + '.json', stringify(skuidPage), 'utf8');

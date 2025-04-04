@@ -1,16 +1,16 @@
 
 type SkuidPage = {
-    apiVersion: string;
-    name: string;
-    uniqueId: string;
-    type: string;
-    module: string;
-    maxAutoSaves: number;
-    masterPageUniqueId: string;
-    isMasterPage: boolean;
-    composerSettings: object;
-    body: string;
-    content: string;
+    apiVersion?: string;
+    name?: string;
+    uniqueId?: string;
+    type?: string;
+    module?: string;
+    maxAutoSaves?: number;
+    masterPageUniqueId?: string;
+    isMasterPage?: boolean;
+    composerSettings?: object;
+    body?: string;
+    content?: string;
 };
 
 type PagePost = {

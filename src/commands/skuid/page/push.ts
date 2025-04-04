@@ -1,5 +1,5 @@
 import { Logger, Messages, SfError } from '@salesforce/core';
-import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
+import { Flags, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson } from '@salesforce/ts-types';
 import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
 import { condenseXml } from '../../../helpers/xml';
@@ -8,6 +8,7 @@ import {
     PagePostResult,
     SkuidPage
 } from '../../../types/types';
+import { ArgInput } from '@oclif/core/lib/interfaces/parser';
 
 // Initialize Messages with the current plugin directory
 Messages.importMessagesDirectory(__dirname);
@@ -15,7 +16,7 @@ Messages.importMessagesDirectory(__dirname);
 // Load the specific messages for this file. Messages from @salesforce/command, @salesforce/core,
 // or any library that is using the messages framework can also be loaded this way.
 const messages = Messages.loadMessages('skuid-sfdx', 'skuid-page-push');
-const getUniqueId = (page: SkuidPage) => page.uniqueId.startsWith('_') ? page.uniqueId.substring(1) : page.uniqueId;
+const getUniqueId = (page: SkuidPage) => page.uniqueId?.startsWith('_') ? page.uniqueId.substring(1) : page.uniqueId || "";
 
 export default class Push extends SfCommand<AnyJson> {
     public static description = messages.getMessage('commandDescription');
@@ -32,12 +33,18 @@ export default class Push extends SfCommand<AnyJson> {
     // e.g. zsh may expand the single arg "foo/sample*" into separate arguments
     /// "foo/sample1.xml foo/sample1.json foo/sample2.json foo/sample2.xml"
     public static strict = false;
-    public static args = [{ name: 'file' }];
+    public static args: ArgInput = {
+        file: {
+            name: 'file',
+            input: [],
+            parse: async (input: string) => input
+        }
+    };
 
     public static readonly flags = {
         dir: Flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') }),
-        'target-org': requiredOrgFlagWithDeprecations,
-        'api-version': orgApiVersionFlagWithDeprecations
+        // 'target-org': requiredOrgFlagWithDeprecations,
+        // 'api-version': orgApiVersionFlagWithDeprecations
     };
 
     // Our command requires an SFDX username
@@ -64,9 +71,10 @@ export default class Push extends SfCommand<AnyJson> {
             if (!arg || !arg.length) continue;
             let equalsIndex = arg.indexOf('=');
             if (equalsIndex === -1) equalsIndex = arg.length;
+            const flagArg = arg.substring(2, equalsIndex) as keyof typeof Push.flags;
             const isArg =
                 // Long-form args
-                (arg.startsWith('--') && Flags[arg.substring(2, equalsIndex)]) ||
+                (arg.startsWith('--') && Push.flags[flagArg]) ||
                 // Short-form args
                 (
                     arg.startsWith('-') &&
