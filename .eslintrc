@@ -1,0 +1,10 @@
+{
+    "extends": [
+        "eslint-config-salesforce-typescript",
+        "eslint-config-salesforce-license",
+        "plugin:sf-plugin/migration"
+    ],
+    "rules": {
+        "header/header": false
+    }
+}
