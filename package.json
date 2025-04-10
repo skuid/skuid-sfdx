@@ -72,9 +72,7 @@
     "posttest": "tslint -p test -t stylish",
     "prepack": "rm -rf lib && tsc -b && oclif-dev manifest",
     "oldtest": "nyc --reporter=lcov --reporter=text --extension .ts mocha --forbid-only \"test/**/*.test.ts\"",
-    "test-helpers": "mocha --require ts-node/register --recursive test/helpers/*.test.ts",
-    "test-commands": "mocha --require ts-node/register --recursive test/commands/**/*.test.ts",
-    "test": "yarn test-helpers && yarn test-commands",
+    "test": "mocha",
     "version": "oclif-dev readme && git add README.md"
   }
 }
