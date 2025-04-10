@@ -56,11 +56,11 @@ describe('skuid page pull', () => {
   };
 
   const $$ = new TestContext();
-  const testOrg = new MockTestOrgData();
+  const testData = new MockTestOrgData();
   const config = new Config({ root: resolve(__dirname, '../../../package.json') });
 
   beforeEach(async () => {
-    await $$.stubAuths(testOrg);
+    await $$.stubAuths(testData);
     await config.load();
     clean();
   });
@@ -70,7 +70,7 @@ describe('skuid page pull', () => {
     clean();
   });
 
-  it('runs skuid:page:pull with no page or module specified', async ctx => {
+  it('runs skuid:page:pull with no page or module specified', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
@@ -83,7 +83,7 @@ describe('skuid page pull', () => {
     };
 
     const cmd = new Pull(
-      ['skuid:page:pull', '--targetusername', 'test@org.com'],
+      ["--target-org", testData.username],
       config
     );
 
@@ -91,7 +91,7 @@ describe('skuid page pull', () => {
     expect(result).to.equal('Wrote 2 pages to skuidpages');
   });
 
-  it('only requests pages with no module, and respects dir ', async ctx => {
+  it('only requests pages with no module, and respects dir ', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?nomodule=true/)) {
@@ -103,7 +103,7 @@ describe('skuid page pull', () => {
     };
 
     const cmd = new Pull(
-      ['skuid:page:pull', '--targetusername', 'test@org.com', '--nomodule', '--dir', 'foo'],
+      ["--target-org", testData.username, '--nomodule', '--dir', 'foo'],
       config
     );
 
@@ -111,7 +111,7 @@ describe('skuid page pull', () => {
     expect(result).to.contain('Wrote 1 pages to foo');
   });
 
-  it('only requests pages in specified module', async ctx => {
+  it('only requests pages in specified module', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo/)) {
@@ -123,7 +123,7 @@ describe('skuid page pull', () => {
     }
 
     const cmd = new Pull(
-      ['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo'],
+      ["--target-org", testData.username, '--module', 'foo'],
       config
     );
 
@@ -131,7 +131,7 @@ describe('skuid page pull', () => {
     expect(result).to.contain('Wrote 1 pages to skuidpages');
   });
   
-  it('removes unsafe directory characters from at-rest file names', async ctx => {
+  it('removes unsafe directory characters from at-rest file names', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
@@ -143,7 +143,7 @@ describe('skuid page pull', () => {
     }
 
     const cmd = new Pull(
-      ['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar\\baz'],
+      ["--target-org", testData.username, '--module', 'foo/bar\\baz'],
       config
     );
 
@@ -151,7 +151,7 @@ describe('skuid page pull', () => {
     expect(result).to.contain('Wrote 1 pages to skuidpages');
   });
 
-  it('only requests specific pages', async ctx => {
+  it('only requests specific pages', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?page=SomePageName%2CAnotherPageName/)) {
@@ -164,7 +164,7 @@ describe('skuid page pull', () => {
     }
 
     const cmd = new Pull(
-      ['skuid:page:pull', '--targetusername', 'test@org.com', '--page', 'SomePageName,AnotherPageName'],
+      ["--target-org", testData.username, '--page', 'SomePageName,AnotherPageName'],
       config
     );
 
@@ -172,7 +172,7 @@ describe('skuid page pull', () => {
     expect(result).to.contain('Wrote 2 pages to skuidpages');
   });
 
-  it('returns results as json', async ctx => {
+  it('returns results as json', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
@@ -185,7 +185,7 @@ describe('skuid page pull', () => {
     }
 
     const cmd = new Pull(
-      ['skuid:page:pull', '--targetusername', 'test@org.com', '--json'],
+      ["--target-org", testData.username, '--json'],
       config
     );
 
@@ -201,7 +201,7 @@ describe('skuid page pull', () => {
     });
   });
 
-  it("removes unsafe directory characters from at-rest file names in json output", async ctx => {
+  it("removes unsafe directory characters from at-rest file names in json output", async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
@@ -213,7 +213,7 @@ describe('skuid page pull', () => {
     }
 
     const cmd = new Pull(
-      ["skuid:page:pull", "--targetusername", "test@org.com", "--json", '--module', "foo/bar\\baz"],
+      ["--target-org", testData.username, "--json", '--module', "foo/bar\\baz"],
       config
     );
 

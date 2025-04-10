@@ -62,7 +62,7 @@ export default class Pull extends SfCommand<AnyJson> {
 
     // when you get a Connection, pass the api-version flag to it
     // that way, if the user specified an api version, the Connection is set
-    const conn = flags['target-org'].getConnection(flags['api-version']);
+    const conn = flags['target-org'].getConnection();
 
     let resultJSON: string = await conn.apex.get(`/skuid/api/v1/pages?${param(queryParams)}`);
 
@@ -120,7 +120,7 @@ export default class Pull extends SfCommand<AnyJson> {
 
     this.log('Wrote ' + numPages + ' pages to ' + dir);
 
-    return {};
+    return 'Wrote ' + numPages + ' pages to ' + dir;
   }
 
   private beautifyXml(xml: string, pageName: string): string {
