@@ -1,7 +1,0 @@
-{
-  "commandDescription": "Pull Skuid Pages from a Salesforce org into a local directory",
-  "moduleFlagDescription": "Module name(s), separated by a comma.",
-  "pageNameFlagDescription": "Page name(s), separated by a comma.",
-  "noModuleFlagDescription": "Retrieve only those pages that do not have a module",
-  "dirFlagDescription": "Output directory to write pages to."
-}
