@@ -66,7 +66,7 @@ export default class Push extends SfCommand<AnyJson> {
             if (equalsIndex === -1) equalsIndex = arg.length;
             const isArg =
                 // Long-form args
-                (arg.startsWith('--') && Flags[arg.substring(2, equalsIndex)]) ||
+                (arg.startsWith('--') && flags[arg.substring(2, equalsIndex)]) ||
                 // Short-form args
                 (
                     arg.startsWith('-') &&

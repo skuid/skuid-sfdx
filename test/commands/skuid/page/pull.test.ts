@@ -70,6 +70,17 @@ describe('skuid page pull', () => {
     clean();
   });
 
+  // This allows us to test messages that are logged to the console
+  const testLogMessages = (cmd:Pull, messages:string[]) => {
+      let i = 0;
+      console.log('setup testLog', messages);
+      cmd.log = (result) => {
+          console.log(i, result, messages[i])
+          expect(result).to.contain(messages[i]);
+          i++;
+      };
+  }
+
   it('runs skuid:page:pull with no page or module specified', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
@@ -87,8 +98,8 @@ describe('skuid page pull', () => {
       config
     );
 
-    const result = await cmd.run();
-    expect(result).to.equal('Wrote 2 pages to skuidpages');
+    testLogMessages(cmd, [ "Wrote 2 pages to skuidpages" ]);
+    await cmd.run();
   });
 
   it('only requests pages with no module, and respects dir ', async () => {
@@ -107,8 +118,8 @@ describe('skuid page pull', () => {
       config
     );
 
-    const result = await cmd.run();
-    expect(result).to.contain('Wrote 1 pages to foo');
+    testLogMessages(cmd, [ "Wrote 1 pages to foo" ]);
+    await cmd.run();
   });
 
   it('only requests pages in specified module', async () => {
@@ -127,8 +138,8 @@ describe('skuid page pull', () => {
       config
     );
 
-    const result = await cmd.run();
-    expect(result).to.contain('Wrote 1 pages to skuidpages');
+    testLogMessages(cmd, [ "Wrote 1 pages to skuidpages" ]);
+    await cmd.run();
   });
   
   it('removes unsafe directory characters from at-rest file names', async () => {
@@ -147,8 +158,8 @@ describe('skuid page pull', () => {
       config
     );
 
-    const result = await cmd.run();
-    expect(result).to.contain('Wrote 1 pages to skuidpages');
+    testLogMessages(cmd, [ "Wrote 1 pages to skuidpages" ]);
+    await cmd.run();
   });
 
   it('only requests specific pages', async () => {
@@ -168,8 +179,8 @@ describe('skuid page pull', () => {
       config
     );
 
-    const result = await cmd.run();
-    expect(result).to.contain('Wrote 2 pages to skuidpages');
+    testLogMessages(cmd, [ "Wrote 2 pages to skuidpages" ]);
+    await cmd.run();
   });
 
   it('returns results as json', async () => {
@@ -191,12 +202,9 @@ describe('skuid page pull', () => {
 
     const jsonOutput = await cmd.run();
     expect(jsonOutput).to.deep.equal({
-      status: 0,
-      result: {
-        pages: {
-          "foo_SomePageName": v1PageWithPrettyXML,
-          "AnotherPageName": v2PageWithPrettyXML,
-        }
+      pages: {
+        "foo_SomePageName": v1PageWithPrettyXML,
+        "AnotherPageName": v2PageWithPrettyXML,
       }
     });
   });
@@ -219,11 +227,8 @@ describe('skuid page pull', () => {
 
     const jsonOutput = await cmd.run();
     expect(jsonOutput).to.deep.equal({
-      status: 0,
-      result: {
-        pages: {
-          "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
-        }
+      pages: {
+        "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
       }
     });
   });

@@ -1,4 +1,3 @@
-// import { expect, test } from '@salesforce/command/lib/test';
 import { expect } from 'chai';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { SkuidPage, PagePost } from "../../../../src/types/types";
@@ -26,11 +25,11 @@ const expectPushPayloadToHavePages = (pushPayload:string, pages:SkuidPage[]) => 
 
 describe('skuid:page:push', () => {
     const $$ = new TestContext();
-    const testOrg = new MockTestOrgData();
+    const testData = new MockTestOrgData();
     const config = new Config({ root: resolve(__dirname, '../../../package.json') });
 
     beforeEach(async () => {
-        await $$.stubAuths(testOrg);
+        await $$.stubAuths(testData);
         await config.load();
     });
 
@@ -38,7 +37,18 @@ describe('skuid:page:push', () => {
         $$.restore();
     });
 
-    it('runs skuid:page:push from a source directory', async ctx => {
+    // This allows us to test messages that are logged to the console
+    const testLogMessages = (cmd:Push, messages:string[]) => {
+        let i = 0;
+        console.log('setup testLog', messages);
+        cmd.log = (result) => {
+            console.log(i, result, messages[i])
+            expect(result).to.contain(messages[i]);
+            i++;
+        };
+    }
+
+    it('runs skuid:page:push from a source directory', async () => {
         $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
             const requestMap = ensureJsonMap(request);
             if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
@@ -51,264 +61,290 @@ describe('skuid:page:push', () => {
         };
 
         const cmd = new Push(
-            ['--dir', 'test/fixtures'],
+            ["--target-org", testData.username, '--dir', 'test/fixtures'],
+            config
+        );
+
+        testLogMessages(cmd, [
+            "Found 2 matching pages within test/fixtures, pushing changes to org...",
+            "2 Pages successfully pushed."
+        ]);
+
+        await cmd.run();
+    });
+
+    it('should display result as json if --json specified', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expectPushPayloadToHavePages(requestMap.body as string, [ v2PageMetadataWithXml, v1PageMetadataWithXml ]);
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
+
+        const cmd = new Push(
+            ["--target-org", testData.username, '--dir', 'test/fixtures', '--json', '**/*.json'],
             config
         );
 
         const result = await cmd.run();
-        expect(result).to.contain('Found 2 matching pages within test/fixtures, pushing changes to org...');
-        expect(result).to.contain('2 Pages successfully pushed.');
+        expect(result).to.deep.equal({
+            pages: [ 'AnotherPageName', 'foo_SomePageName' ],
+            success: true
+        });
     });
 
-    // it('should display result as json if --json specified', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             expectPushPayloadToHavePages(requestMap.body as string, [ v2PageMetadataWithXml, v1PageMetadataWithXml ]);
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: true,
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+    it('only pushes pages matching a file glob', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expectPushPayloadToHavePages(requestMap.body as string, [v1PageMetadataWithXml]);
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
 
-    //     const cmd = new Push(
-    //         ['skuid:page:push', '--targetusername', 'test@org.com', '--dir', 'test/fixtures', '--json'],
-    //         config
-    //     );
+        const cmd = new Push(
+            ["--target-org", testData.username, 'test@org.com', 'test/fixtures/*SomePage*'],
+            config
+        );
 
-    //     const result = await cmd.run();
-    //     expect(result).to.deep.equal({
-    //         status: 0,
-    //         result: {
-    //             pages: [ 'AnotherPageName', 'foo_SomePageName' ],
-    //             success: true
-    //         }
-    //     });
-    // });
+        testLogMessages(cmd, [
+            "Found 1 matching pages within current directory, pushing changes to org...",
+            "1 Pages successfully pushed."
+        ]);
 
-    // it('only pushes pages matching a file glob', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             expectPushPayloadToHavePages(requestMap.body as string, [v1PageMetadataWithXml]);
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: true,
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+        await cmd.run();
+    });
 
-    //     const cmd = new Push(
-    //         ['skuid:page:push', '--targetusername', 'test@org.com', 'test/fixtures/*SomePage*'],
-    //         config
-    //     );
+    it('should accept multiple file paths', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found 1 matching pages within current directory, pushing changes to org...');
-    //     expect(result).to.contain('1 Pages successfully pushed.');
-    // });
+        const cmd = new Push(
+            [
+                "--target-org",
+                testData.username,
+                'test/fixtures/AnotherPageName.json',
+                'test/fixtures/AnotherPageName.xml',
+                'test/fixtures/foo_SomePageName.json',
+                'test/fixtures/foo_SomePageName.xml',
+            ],
+            config
+        );
 
-    // it('should accept multiple file paths', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: true,
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+        testLogMessages(cmd, [
+            "Found 2 matching pages within current directory, pushing changes to org...",
+            "2 Pages successfully pushed."
+        ]);
 
-    //     const cmd = new Push(
-    //         [
-    //             'skuid:page:push',
-    //             '-u=test@org.com',
-    //             'test/fixtures/AnotherPageName.json',
-    //             'test/fixtures/AnotherPageName.xml',
-    //             'test/fixtures/foo_SomePageName.json',
-    //             'test/fixtures/foo_SomePageName.xml',
-    //         ],
-    //         config
-    //     );
+        await cmd.run();
+    });
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found 2 matching pages within current directory, pushing changes to org...');
-    //     expect(result).to.contain('2 Pages successfully pushed.');
-    // });
+    it('should accept multiple file paths, but remove duplicates', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
 
-    // it('should accept multiple file paths, but remove duplicates', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: true,
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+        const cmd = new Push(
+            [
+                "--target-org",
+                testData.username,
+                'test/fixtures/AnotherPageName.xml',
+                'test/fixtures/AnotherPageName.xml',
+                'test/fixtures/foo_SomePageName.xml',
+                'test/fixtures/foo_SomePageName.xml',
+            ],
+            config
+        );
 
-    //     const cmd = new Push(
-    //         [
-    //             'skuid:page:push',
-    //             '-u',
-    //             'test@org.com',
-    //             'test/fixtures/AnotherPageName.xml',
-    //             'test/fixtures/AnotherPageName.xml',
-    //             'test/fixtures/foo_SomePageName.xml',
-    //             'test/fixtures/foo_SomePageName.xml',
-    //         ],
-    //         config
-    //     );
+        testLogMessages(cmd, [
+            "Found 2 matching pages within current directory, pushing changes to org...",
+            "2 Pages successfully pushed."
+        ]);
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found 2 matching pages within current directory, pushing changes to org...');
-    //     expect(result).to.contain('2 Pages successfully pushed.');
-    // });
+        await cmd.run();
+    });
 
-    // it('should accept multiple file paths containing globs', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             expectPushPayloadToHavePages(requestMap.body as string, [v1PageMetadataWithXml]);
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: true,
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+    it('should accept multiple file paths containing globs', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expectPushPayloadToHavePages(requestMap.body as string, [v1PageMetadataWithXml]);
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
 
-    //     const cmd = new Push(
-    //         [
-    //             'skuid:page:push',
-    //             '-u',
-    //             'test@org.com',
-    //             '-d',
-    //             'test',
-    //             'fixtures/boo*',
-    //             '*foo*',
-    //             'fixtures/foo_SomePageName.xml'
-    //         ],
-    //         config
-    //     );
+        const cmd = new Push(
+            [
+                "--target-org",
+                testData.username,
+                '-d',
+                'test',
+                'fixtures/boo*',
+                '*foo*',
+                'fixtures/foo_SomePageName.xml'
+            ],
+            config
+        );
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found 1 matching pages within test, pushing changes to org...');
-    //     expect(result).to.contain('1 Pages successfully pushed.');
-    // });
+        testLogMessages(cmd, [
+            "Found 1 matching pages within test, pushing changes to org...",
+            "1 Pages successfully pushed."
+        ]);
 
-    // it('should ignore non-Skuid metadata files', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: true,
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+        await cmd.run();
+    });
 
-    //     const cmd = new Push(
-    //         [
-    //             'skuid:page:push',
-    //             '-u',
-    //             'test@org.com',
-    //             '-d',
-    //             'test',
-    //             '**/*',
-    //         ],
-    //         config
-    //     );
+    it('should ignore non-Skuid metadata files', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found 2 matching pages within test, pushing changes to org...');
-    //     expect(result).to.contain('2 Pages successfully pushed.');
-    // });
+        const cmd = new Push(
+            [
+                "--target-org",
+                testData.username,
+                '-d',
+                'test',
+                '**/*',
+            ],
+            config
+        );
 
-    // it('should not make a request if no matching pages are found', async ctx => {
-    //     const cmd = new Push(
-    //         ['skuid:page:push', '--targetusername', 'test@org.com', 'test/fixtures/*BBBBBBBB*'],
-    //         config
-    //     );
+        testLogMessages(cmd, [
+            "Found 2 matching pages within test, pushing changes to org...",
+            "2 Pages successfully pushed."
+        ]);
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found no matching pages in the provided file paths.');
-    // });
+        await cmd.run();
+    });
 
-    // it('should return json result if no matching pages are found', async ctx => {
-    //     const cmd = new Push(
-    //         ['skuid:page:push', '--targetusername', 'test@org.com', 'test/fixtures/*BBBBBBBB*', '--json'],
-    //         config
-    //     );
+    it('should not make a request if no matching pages are found', async () => {
+        const cmd = new Push(
+            ["--target-org", testData.username, 'test/fixtures/*BBBBBBBB*'],
+            config
+        );
 
-    //     const result = await cmd.run();
-    //     expect(result).to.deep.equal({
-    //         status: 0,
-    //         result: {
-    //             pages: [],
-    //             success: false
-    //         }
-    //     });
-    // });
+        testLogMessages(cmd, [
+            "Found no matching pages in the provided file paths."
+        ]);
 
-    // it('handles errors from server', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: false,
-    //                 upsertErrors: [
-    //                     'Invalid Name for Page'
-    //                 ]
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+        await cmd.run();
+    });
 
-    //     const cmd = new Push(
-    //         ['skuid:page:push', '--targetusername', 'test@org.com', '--dir', 'test/fixtures'],
-    //         config
-    //     );
+    it('should return json result if no matching pages are found', async () => {
+        const cmd = new Push(
+            ['skuid:page:push', '--targetusername', 'test@org.com', 'test/fixtures/*BBBBBBBB*', '--json'],
+            config
+        );
 
-    //     const result = await cmd.run();
-    //     expect(result).to.contain('Found 2 matching pages within test/fixtures, pushing changes to org...');
-    //     expect(result).to.contain('Invalid Name for Page');
-    // });
+        const result = await cmd.run();
+        expect(result).to.deep.equal({
+            pages: [],
+            success: false
+        });
+    });
 
-    // it('handles errors from server and returns in json format if requested', async ctx => {
-    //     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
-    //         const requestMap = ensureJsonMap(request);
-    //         if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-    //             return Promise.resolve(JSON.stringify({
-    //                 success: false,
-    //                 upsertErrors: [
-    //                     'Invalid Name for Page'
-    //                 ]
-    //             }));
-    //         }
-    //         return Promise.reject(new Error('Unexpected request'));
-    //     };
+    it('handles errors from server', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                return Promise.resolve(JSON.stringify({
+                    success: false,
+                    upsertErrors: [
+                        'Invalid Name for Page'
+                    ]
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
 
-    //     const cmd = new Push(
-    //         ['skuid:page:push', '--targetusername', 'test@org.com', '--dir', 'test/fixtures', '--json'],
-    //         config
-    //     );
+        const cmd = new Push(
+            [ "--target-org", testData.username, '--dir', 'test/fixtures'],
+            config
+        );
 
-    //     const result = await cmd.run();
-    //     // const jsonOutput = JSON.parse(ctx.stderr);
-    //     // // Delete stack because it's too messy to test
-    //     // delete jsonOutput.stack;
-    //     expect(result).to.deep.equal({
-    //         "status": 1,
-    //         "name": "SkuidPagePushError",
-    //         "message": "Invalid Name for Page",
-    //         "exitCode": 1,
-    //         "actions": [],
-    //         "commandName": "Push",
-    //         "warnings": []
-    //     });
-    // });
+        testLogMessages(cmd, [
+            "Found 2 matching pages within test/fixtures, pushing changes to org...",
+            "AnotherPageName",
+            "foo_SomePageName"
+        ]);
+
+        try {
+            await cmd.run();
+        } catch (e) {
+            expect(e).to.be.instanceOf(Error);
+            expect(e.message).to.contain('Invalid Name for Page');
+        }
+    });
+
+    it('handles errors from server and returns in json format if requested', async () => {
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                return Promise.resolve(JSON.stringify({
+                    success: false,
+                    upsertErrors: [
+                        'Invalid Name for Page'
+                    ]
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
+
+        const cmd = new Push(
+            [ "--target-org", testData.username, '--dir', 'test/fixtures', '--json'],
+            config
+        );
+
+        try {
+            await cmd.run();
+        } catch (e) {
+            const jsonString = JSON.stringify(e, Object.getOwnPropertyNames(e)),
+                jsonOutput = JSON.parse(jsonString);
+
+            // Delete stack because it's too messy to test
+            delete jsonOutput.stack;
+
+            expect(e).to.be.instanceOf(Error);
+            expect(e.message).to.contain('Invalid Name for Page');
+            expect(jsonOutput).to.deep.equal({
+                "name": "SkuidPagePushError",
+                "message": "Invalid Name for Page",
+                "exitCode": 1,
+                "actions": [],
+            });
+        }
+    });
 });

@@ -24,7 +24,7 @@ export default class Pull extends SfCommand<AnyJson> {
   public static description = messages.getMessage('commandDescription');
 
   public static examples = [
-  '$ sf skuid:page:pull --targetusername myOrg@example.com --module CommunityPages',
+  '$ sf skuid:page:pull --target-org myOrg@example.com --module CommunityPages',
   '$ sf skuid:page:pull --nomodule',
   '$ sf skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
   ];
@@ -120,7 +120,7 @@ export default class Pull extends SfCommand<AnyJson> {
 
     this.log('Wrote ' + numPages + ' pages to ' + dir);
 
-    return 'Wrote ' + numPages + ' pages to ' + dir;
+    return {};
   }
 
   private beautifyXml(xml: string, pageName: string): string {
