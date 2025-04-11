@@ -1,6 +1,6 @@
 
+import { expect } from "chai";
 import { condenseXml, formatXml } from "../../src/helpers/xml";
-import { expect } from '@salesforce/command/lib/test';
 
 const formula = `CASE(
 	MONTH({{CreatedDate}}),
@@ -18,7 +18,7 @@ if (foo == "bar") {
 }
 console.log(foo);
 `;
-const getFormatted = (alternateIndent = null) => {
+const getFormatted = (alternateIndent = "") => {
 	let part1 = `<skuid__page>
 	<models>
 		<model id="foo" sobject="Account">

@@ -1,6 +1,11 @@
-import { expect, test } from '@salesforce/command/lib/test';
-import { ensureJsonMap, ensureString } from '@salesforce/ts-types';
+import { Config } from '@oclif/core';
+import { resolve } from 'path';
 import { sync as rmSync } from 'rimraf';
+// import { expect } from '@salesforce/command/lib/test';
+import { expect } from 'chai';
+import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
+import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
+import Pull from "../../../../src/commands/skuid/page/pull";
 import { formatXml } from '../../../../src/helpers/xml';
 
 const v1PageObject = {
@@ -43,19 +48,41 @@ const v1PageObjectWithSlashModulePrettyXML = Object.assign({}, v1PageObjectWithS
   body: formatXml(v1PageObjectWithSlashModule.body)
 });
 
-describe('skuid:page:pull', () => {
+describe('skuid page pull', () => {
 
   const clean = () => {
     rmSync('foo');
     rmSync('skuidpages');
   };
 
-  before(clean);
-  after(clean);
+  const $$ = new TestContext();
+  const testData = new MockTestOrgData();
+  const config = new Config({ root: resolve(__dirname, '../../../package.json') });
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+  beforeEach(async () => {
+    await $$.stubAuths(testData);
+    await config.load();
+    clean();
+  });
+
+  afterEach(async () => {
+    $$.restore();
+    clean();
+  });
+
+  // This allows us to test messages that are logged to the console
+  const testLogMessages = (cmd:Pull, messages:string[]) => {
+      let i = 0;
+      console.log('setup testLog', messages);
+      cmd.log = (result) => {
+          console.log(i, result, messages[i])
+          expect(result).to.contain(messages[i]);
+          i++;
+      };
+  }
+
+  it('runs skuid:page:pull with no page or module specified', async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
@@ -64,16 +91,19 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com'])
-    .it('runs skuid:page:pull with no page or module specified', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 2 pages to skuidpages');
-    });
+    };
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ["--target-org", testData.username],
+      config
+    );
+
+    testLogMessages(cmd, [ "Wrote 2 pages to skuidpages" ]);
+    await cmd.run();
+  });
+
+  it('only requests pages with no module, and respects dir ', async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?nomodule=true/)) {
         return Promise.resolve(JSON.stringify({
@@ -81,16 +111,19 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--nomodule', '--dir', 'foo'])
-    .it('only requests pages with no module, and respects dir ', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 1 pages to foo');
-    });
+    };
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ["--target-org", testData.username, '--nomodule', '--dir', 'foo'],
+      config
+    );
+
+    testLogMessages(cmd, [ "Wrote 1 pages to foo" ]);
+    await cmd.run();
+  });
+
+  it('only requests pages in specified module', async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo/)) {
         return Promise.resolve(JSON.stringify({
@@ -98,16 +131,19 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo'])
-    .it('only requests pages in specified module', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
-    });
+    }
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ["--target-org", testData.username, '--module', 'foo'],
+      config
+    );
+
+    testLogMessages(cmd, [ "Wrote 1 pages to skuidpages" ]);
+    await cmd.run();
+  });
+  
+  it('removes unsafe directory characters from at-rest file names', async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
@@ -115,16 +151,19 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--module', 'foo/bar\\baz'])
-    .it('removes unsafe directory characters from at-rest file names', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 1 pages to skuidpages');
-    });
+    }
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ["--target-org", testData.username, '--module', 'foo/bar\\baz'],
+      config
+    );
+
+    testLogMessages(cmd, [ "Wrote 1 pages to skuidpages" ]);
+    await cmd.run();
+  });
+
+  it('only requests specific pages', async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?page=SomePageName%2CAnotherPageName/)) {
         return Promise.resolve(JSON.stringify({
@@ -133,16 +172,19 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--page', 'SomePageName,AnotherPageName'])
-    .it('only requests specific pages', ctx => {
-      expect(ctx.stdout).to.contain('Wrote 2 pages to skuidpages');
-    });
+    }
 
-  test
-    .withOrg({ username: 'test@org.com' }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ["--target-org", testData.username, '--page', 'SomePageName,AnotherPageName'],
+      config
+    );
+
+    testLogMessages(cmd, [ "Wrote 2 pages to skuidpages" ]);
+    await cmd.run();
+  });
+
+  it('returns results as json', async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
@@ -151,25 +193,24 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(['skuid:page:pull', '--targetusername', 'test@org.com', '--json'])
-    .it('returns results as json', ctx => {
-      const jsonOutput = JSON.parse(ctx.stdout);
-      expect(jsonOutput).to.deep.equal({
-        status: 0,
-        result: {
-          pages: {
-            "foo_SomePageName": v1PageWithPrettyXML,
-            "AnotherPageName": v2PageWithPrettyXML,
-          }
-        }
-      });
-    });
+    }
 
-  test
-    .withOrg({ username: "test@org.com" }, true)
-    .withConnectionRequest(request => {
+    const cmd = new Pull(
+      ["--target-org", testData.username, '--json'],
+      config
+    );
+
+    const jsonOutput = await cmd.run();
+    expect(jsonOutput).to.deep.equal({
+      pages: {
+        "foo_SomePageName": v1PageWithPrettyXML,
+        "AnotherPageName": v2PageWithPrettyXML,
+      }
+    });
+  });
+
+  it("removes unsafe directory characters from at-rest file names in json output", async () => {
+    $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
@@ -177,19 +218,18 @@ describe('skuid:page:pull', () => {
         }));
       }
       return Promise.reject(new Error("Unexpected request"));
-    })
-    .stdout()
-    .command(["skuid:page:pull", "--targetusername", "test@org.com", "--json", '--module', "foo/bar\\baz"])
-    .it("removes unsafe directory characters from at-rest file names in json output", ctx => {
-      const jsonOutput = JSON.parse(ctx.stdout);
-      expect(jsonOutput).to.deep.equal({
-        status: 0,
-        result: {
-          pages: {
-            "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
-          }
-        }
-      });
-    });
+    }
 
+    const cmd = new Pull(
+      ["--target-org", testData.username, "--json", '--module', "foo/bar\\baz"],
+      config
+    );
+
+    const jsonOutput = await cmd.run();
+    expect(jsonOutput).to.deep.equal({
+      pages: {
+        "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
+      }
+    });
+  });
 });
