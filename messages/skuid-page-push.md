@@ -6,6 +6,6 @@ Push Skuid Pages from a directory to Skuid.
 
 Skuid Page file(s) to push. Supports file globs.
 
-# dirFlagDescription
+# flags.dir.summary
 
 Source directory in which page files reside.

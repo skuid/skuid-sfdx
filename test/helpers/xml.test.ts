@@ -1,6 +1,7 @@
 
-import { expect } from "chai";
-import { condenseXml, formatXml } from "../../src/helpers/xml";
+// eslint-disable-next-line header/header
+import { expect } from 'chai';
+import { condenseXml, formatXml } from '../../src/helpers/xml';
 
 const formula = `CASE(
 	MONTH({{CreatedDate}}),
@@ -18,7 +19,7 @@ if (foo == "bar") {
 }
 console.log(foo);
 `;
-const getFormatted = (alternateIndent = "") => {
+const getFormatted = (alternateIndent = ''): string => {
 	let part1 = `<skuid__page>
 	<models>
 		<model id="foo" sobject="Account">
@@ -55,19 +56,19 @@ const getFormatted = (alternateIndent = "") => {
 const condensed = `<skuid__page><models><model id="foo" sobject="Account"><fields><field id="Name"/><field id="CreatedDate"/></fields></model><model id="bar" sobject="Contact"><fields><field id="Name"/><field id="CreatedDate"/><field id="Forecast" uionly="true" displaytype="FORMULA" returntype="TEXT"><formula>${formula}</formula></field></fields></model></models><resources><javascript><jsitem location="inline" name="SomeInlineJS">${inlineJS}</jsitem></javascript></resources></skuid__page>`;
 
 describe('condenseXml', () => {
-  it("should remove recreateable whitespace from a string of XML", () => {
+  it('should remove recreateable whitespace from a string of XML', () => {
     expect(condenseXml(getFormatted())).to.equal(condensed);
   });
 });
 
 describe('formatXml', () => {
-  it("should pretty print a string of condensed XML using tabs as indentation by default", () => {
-		expect(formatXml(condensed).replace("\r\n", "\n")).to.equal(getFormatted());
+  it('should pretty print a string of condensed XML using tabs as indentation by default', () => {
+		expect(formatXml(condensed).replace('\r\n', '\n')).to.equal(getFormatted());
 	});
-	it("should allow overrides of the indentation padding via environment variable", () => {
+	it('should allow overrides of the indentation padding via environment variable', () => {
 		// override indent to 2 spaces
-		const alternateIndent = process.env.SKUID_XML_INDENT = "  ";
-		expect(formatXml(condensed).replace("\r\n", "\n")).to.equal(getFormatted(alternateIndent));
+		const alternateIndent = process.env.SKUID_XML_INDENT = '  ';
+		expect(formatXml(condensed).replace('\r\n', '\n')).to.equal(getFormatted(alternateIndent));
 		delete process.env.SKUID_XML_INDENT;
 	});
 });

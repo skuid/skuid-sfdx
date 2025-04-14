@@ -1,7 +1,15 @@
+/*
+ * Copyright (c) 2023, salesforce.com, inc.
+ * All rights reserved.
+ * Licensed under the BSD 3-Clause license.
+ * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ */
 
+/* eslint-disable unicorn/prefer-node-protocol */
 import { readFile } from 'fs';
-import * as glob from 'glob';
 import * as path from 'path';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import * as glob from 'glob';
 import { isValidPageXML } from '../helpers/xml';
 import { SkuidPage } from '../types/types';
 
@@ -23,9 +31,9 @@ type GlobOptions = {
  * @param {GlobOptions} opts - glob options
  * @return String[] - array of file paths
  */
-async function globAsync(filePath: string, opts: GlobOptions) {
+async function globAsync(filePath: string, opts: GlobOptions): Promise<string[]> {
     return new Promise((resolve, reject) => {
-        glob(filePath, opts, async (err, files: string[]) => {
+        glob(filePath, opts, (err, files: string[]): void => {
             if (err) reject(err);
             else resolve(files);
         });
@@ -37,15 +45,15 @@ async function globAsync(filePath: string, opts: GlobOptions) {
  * @returns {SkuidPage[]}
  */
 
-async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
+async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirectory: string|undefined): Promise<SkuidPage[]> {
     const opts = {} as GlobOptions;
     if (sourceDirectory) opts.cwd = sourceDirectory;
 
     // For each path provided, expand any globs, resulting in an array of arrays.
-    const globResults = await Promise.all(filePaths.map(filePath => globAsync(filePath, opts))) as string[][];
+    const globResults = await Promise.all(filePaths.map(filePath => globAsync(filePath, opts)));
 
     // Condense the arrays into one
-    const combinedResults = [];
+    const combinedResults: string[] = [];
     const uniquePaths = new Set();
     for (const resultsArray of globResults) {
         for (let result of resultsArray) {
@@ -65,15 +73,24 @@ async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
     await Promise.all(
         combinedResults
             .map(async f => {
-                let result;
+                let result: SkuidPage;
                 try {
-                    result = await getPageDefinitionFromJsonPath(path.resolve(sourceDirectory || '', f));
+                    result = await getPageDefinitionFromJsonPath(path.resolve(sourceDirectory ?? '', f));
                     pageDefinitions.push(result);
                 } catch (e) {
+                    let errorMessage: string;
+                    if (typeof e === 'string') {
+                        errorMessage = e;
+                    } else if (e instanceof Error) {
+                        errorMessage = e.message;
+                    } else {
+                        throw e;
+                    }
+
                     if ([
                         INVALID_PAGE_XML,
                         INVALID_PAGE_JSON
-                    ].includes(e.message)) {
+                    ].includes(errorMessage)) {
                         return;
                     } else {
                         throw e;
@@ -84,7 +101,7 @@ async function getPageDefinitionsFromFileGlobs(filePaths, sourceDirectory) {
     return pageDefinitions;
 }
 
-async function getFileBody(filePath) {
+async function getFileBody(filePath: string): Promise<string> {
     return new Promise((resolve, reject) => {
         readFile(filePath, 'utf8', (err, fileBody) => {
             if (err) reject(err);
@@ -95,10 +112,11 @@ async function getFileBody(filePath) {
 
 /**
  * Performs a very basic sanity test on whether the input file a valid Skuid Page JSON definition
+ *
  * @param pageDef {SkuidPage} pageDef - a potential Skuid Page JSON definition
  * @returns {Boolean}
  */
-function isValidPageJSONDefinition(pageDef) {
+function isValidPageJSONDefinition(pageDef): boolean {
     // Our goal here is just to prevent users from inadvertently grabbing non-Skuid JSON files
     // via a glob pattern. We will defer to server-side validation to ensure the JSON is
     // properly formatted.
@@ -117,18 +135,18 @@ function isValidPageJSONDefinition(pageDef) {
  * @returns {SkuidPage} a Skuid Page definition
  * @throws Exception if the input file path corresponds to invalid Skuid Page JSON / XML
  */
-async function getPageDefinitionFromJsonPath(jsonFilePath) {
+async function getPageDefinitionFromJsonPath(jsonFilePath: string): Promise<SkuidPage> {
     const results = await Promise.all([
         getFileBody(jsonFilePath.replace('.json', '.xml')).catch(() => ''),
         getFileBody(jsonFilePath).catch(() => '')
     ]);
-    const xml: string = results[0] as string;
-    const metadata: string = results[1] as string;
+    const xml: string = results[0];
+    const metadata: string = results[1];
 
     let pageDefinition;
     try {
         pageDefinition = JSON.parse(metadata) as SkuidPage;
-    } catch (ex) {}
+    } catch (ex) { /* empty */ }
 
     // Ensure that the provided page JSON definition is valid,
     // otherwise do not include it.

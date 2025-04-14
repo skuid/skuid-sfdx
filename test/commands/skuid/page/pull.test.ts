@@ -1,41 +1,51 @@
-import { Config } from '@oclif/core';
+/*
+ * Copyright (c) 2023, salesforce.com, inc.
+ * All rights reserved.
+ * Licensed under the BSD 3-Clause license.
+ * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ */
+// eslint-disable-next-line unicorn/prefer-node-protocol
 import { resolve } from 'path';
+import { Config } from '@oclif/core';
 import { sync as rmSync } from 'rimraf';
-// import { expect } from '@salesforce/command/lib/test';
 import { expect } from 'chai';
 import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
-import Pull from "../../../../src/commands/skuid/page/pull";
+import Pull from '../../../../src/commands/skuid/page/pull';
 import { formatXml } from '../../../../src/helpers/xml';
 
+// Explicitly define types for rimraf functions
+type rimrafRmSync = (value: string) => void;
+const typedRmSync: rimrafRmSync = rmSync as rimrafRmSync;
+
 const v1PageObject = {
-  "apiVersion": "v1",
-  "name": "SomePageName",
-  "module": "foo",
-  "uniqueId": "foo_SomePageName",
-  "composerSettings": null,
-  "maxAutoSaves": 100,
-  "body": "<skuidpage><models/></skuidpage>",
+  'apiVersion': 'v1',
+  'name': 'SomePageName',
+  'module': 'foo',
+  'uniqueId': 'foo_SomePageName',
+  'composerSettings': null,
+  'maxAutoSaves': 100,
+  'body': '<skuidpage><models/></skuidpage>',
 };
 
 const v1PageObjectWithSlashModule = {
-  "apiVersion": "v1",
-  "name": "Some/Page\\Name",
-  "module": "foo/bar\\baz",
-  "uniqueId": "foo/bar\\baz_Some/Page\\Name",
-  "composerSettings": null,
-  "maxAutoSaves": "100",
-  "body": "<skuidpage><models/></skuidpage>"
+  'apiVersion': 'v1',
+  'name': 'Some/Page\\Name',
+  'module': 'foo/bar\\baz',
+  'uniqueId': 'foo/bar\\baz_Some/Page\\Name',
+  'composerSettings': null,
+  'maxAutoSaves': '100',
+  'body': '<skuidpage><models/></skuidpage>'
 };
 
 const v2PageObject = {
-  "apiVersion": "v2",
-  "name": "AnotherPageName",
-  "module": null,
-  "uniqueId": "_AnotherPageName",
-  "composerSettings": { },
-  "maxAutoSaves": 98,
-  "body": `<skuid__page><models><model id="Accs"></model></models></skuid__page>`,
+  'apiVersion': 'v2',
+  'name': 'AnotherPageName',
+  'module': null,
+  'uniqueId': '_AnotherPageName',
+  'composerSettings': { },
+  'maxAutoSaves': 98,
+  'body': '<skuid__page><models><model id="Accs"></model></models></skuid__page>',
 };
 const v1PageWithPrettyXML = Object.assign({}, v1PageObject, {
   body: formatXml(v1PageObject.body)
@@ -50,9 +60,9 @@ const v1PageObjectWithSlashModulePrettyXML = Object.assign({}, v1PageObjectWithS
 
 describe('skuid page pull', () => {
 
-  const clean = () => {
-    rmSync('foo');
-    rmSync('skuidpages');
+  const clean = (): void => {
+    typedRmSync('foo');
+    typedRmSync('skuidpages');
   };
 
   const $$ = new TestContext();
@@ -65,17 +75,16 @@ describe('skuid page pull', () => {
     clean();
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     $$.restore();
     clean();
   });
 
   // This allows us to test messages that are logged to the console
-  const testLogMessages = (cmd:Pull, messages:string[]) => {
+  const testLogMessages = (cmd: Pull, messages: string[]): void => {
       let i = 0;
-      console.log('setup testLog', messages);
-      cmd.log = (result) => {
-          console.log(i, result, messages[i])
+      // eslint-disable-next-line no-param-reassign
+      cmd.log = (result): void => {
           expect(result).to.contain(messages[i]);
           i++;
       };
@@ -86,19 +95,19 @@ describe('skuid page pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
-          "foo_SomePageName": v1PageObject,
-          "_AnotherPageName": v2PageObject,
+          'foo_SomePageName': v1PageObject,
+          '_AnotherPageName': v2PageObject,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     };
 
     const cmd = new Pull(
-      ["--target-org", testData.username],
+      ['--target-org', testData.username],
       config
     );
 
-    testLogMessages(cmd, [ "Wrote 2 pages to skuidpages" ]);
+    testLogMessages(cmd, [ 'Wrote 2 pages to skuidpages' ]);
     await cmd.run();
   });
 
@@ -107,18 +116,18 @@ describe('skuid page pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?nomodule=true/)) {
         return Promise.resolve(JSON.stringify({
-          "_AnotherPageName": v2PageObject,
+          '_AnotherPageName': v2PageObject,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     };
 
     const cmd = new Pull(
-      ["--target-org", testData.username, '--nomodule', '--dir', 'foo'],
+      ['--target-org', testData.username, '--nomodule', '--dir', 'foo'],
       config
     );
 
-    testLogMessages(cmd, [ "Wrote 1 pages to foo" ]);
+    testLogMessages(cmd, [ 'Wrote 1 pages to foo' ]);
     await cmd.run();
   });
 
@@ -127,18 +136,18 @@ describe('skuid page pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo/)) {
         return Promise.resolve(JSON.stringify({
-          "foo_SomePageName": v1PageObject,
+          'foo_SomePageName': v1PageObject,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     }
 
     const cmd = new Pull(
-      ["--target-org", testData.username, '--module', 'foo'],
+      ['--target-org', testData.username, '--module', 'foo'],
       config
     );
 
-    testLogMessages(cmd, [ "Wrote 1 pages to skuidpages" ]);
+    testLogMessages(cmd, [ 'Wrote 1 pages to skuidpages' ]);
     await cmd.run();
   });
   
@@ -147,18 +156,18 @@ describe('skuid page pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
-          "foo/bar\\baz_Some/Page\\Name": v1PageObjectWithSlashModule,
+          'foo/bar\\baz_Some/Page\\Name': v1PageObjectWithSlashModule,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     }
 
     const cmd = new Pull(
-      ["--target-org", testData.username, '--module', 'foo/bar\\baz'],
+      ['--target-org', testData.username, '--module', 'foo/bar\\baz'],
       config
     );
 
-    testLogMessages(cmd, [ "Wrote 1 pages to skuidpages" ]);
+    testLogMessages(cmd, [ 'Wrote 1 pages to skuidpages' ]);
     await cmd.run();
   });
 
@@ -167,19 +176,19 @@ describe('skuid page pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?page=SomePageName%2CAnotherPageName/)) {
         return Promise.resolve(JSON.stringify({
-          "foo_SomePageName": v1PageObject,
-          "_AnotherPageName": v2PageObject,
+          'foo_SomePageName': v1PageObject,
+          '_AnotherPageName': v2PageObject,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     }
 
     const cmd = new Pull(
-      ["--target-org", testData.username, '--page', 'SomePageName,AnotherPageName'],
+      ['--target-org', testData.username, '--page', 'SomePageName,AnotherPageName'],
       config
     );
 
-    testLogMessages(cmd, [ "Wrote 2 pages to skuidpages" ]);
+    testLogMessages(cmd, [ 'Wrote 2 pages to skuidpages' ]);
     await cmd.run();
   });
 
@@ -188,47 +197,47 @@ describe('skuid page pull', () => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
         return Promise.resolve(JSON.stringify({
-          "foo_SomePageName": v1PageObject,
-          "_AnotherPageName": v2PageObject,
+          'foo_SomePageName': v1PageObject,
+          '_AnotherPageName': v2PageObject,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     }
 
     const cmd = new Pull(
-      ["--target-org", testData.username, '--json'],
+      ['--target-org', testData.username, '--json'],
       config
     );
 
     const jsonOutput = await cmd.run();
     expect(jsonOutput).to.deep.equal({
       pages: {
-        "foo_SomePageName": v1PageWithPrettyXML,
-        "AnotherPageName": v2PageWithPrettyXML,
+        'foo_SomePageName': v1PageWithPrettyXML,
+        'AnotherPageName': v2PageWithPrettyXML,
       }
     });
   });
 
-  it("removes unsafe directory characters from at-rest file names in json output", async () => {
+  it('removes unsafe directory characters from at-rest file names in json output', async () => {
     $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
       const requestMap = ensureJsonMap(request);
       if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages\?module=foo%2Fbar%5Cbaz/)) {
         return Promise.resolve(JSON.stringify({
-          "foo/bar\\baz_Some/Page\\Name": v1PageObjectWithSlashModule,
+          'foo/bar\\baz_Some/Page\\Name': v1PageObjectWithSlashModule,
         }));
       }
-      return Promise.reject(new Error("Unexpected request"));
+      return Promise.reject(new Error('Unexpected request'));
     }
 
     const cmd = new Pull(
-      ["--target-org", testData.username, "--json", '--module', "foo/bar\\baz"],
+      ['--target-org', testData.username, '--json', '--module', 'foo/bar\\baz'],
       config
     );
 
     const jsonOutput = await cmd.run();
     expect(jsonOutput).to.deep.equal({
       pages: {
-        "foobarbaz_SomePageName": v1PageObjectWithSlashModulePrettyXML,
+        'foobarbaz_SomePageName': v1PageObjectWithSlashModulePrettyXML,
       }
     });
   });
