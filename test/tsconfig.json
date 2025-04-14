@@ -1,4 +1,9 @@
 {
-  "extends": "../tsconfig"
+  "extends": "../tsconfig",
+  "include": [
+    "./**/*"
+  ],
+  "compilerOptions": {
+    "rootDir": "../",
+  }
 }
-
