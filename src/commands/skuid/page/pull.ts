@@ -14,7 +14,6 @@ import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecatio
 import { AnyJson, JsonMap } from '@salesforce/ts-types';
 import { stringify } from '../../../helpers/jsonStringify';
 import { param } from '../../../helpers/param';
-
 import { formatXml } from '../../../helpers/xml';
 import {
   PullQueryParams,

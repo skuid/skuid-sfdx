@@ -9,6 +9,7 @@
 import { Logger, Messages, SfError } from '@salesforce/core';
 import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson } from '@salesforce/ts-types';
+import { Args } from '@oclif/core';
 import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
 import { condenseXml } from '../../../helpers/xml';
 import {
@@ -26,7 +27,8 @@ const messages = Messages.loadMessages('skuid-sfdx', 'skuid-page-push');
 const getUniqueId = (page: SkuidPage): string => page.uniqueId.startsWith('_') ? page.uniqueId.substring(1) : page.uniqueId;
 
 export default class Push extends SfCommand<AnyJson> {
-    public static readonly summary = messages.getMessage('commandDescription');public static readonly description = messages.getMessage('commandDescription');
+    public static readonly summary = messages.getMessage('commandDescription');
+    public static readonly description = messages.getMessage('commandDescription');
 
     public static readonly examples = [
         '$ sf skuid page push -u=myOrg@example.com *SalesApp*',
@@ -40,7 +42,7 @@ export default class Push extends SfCommand<AnyJson> {
     // e.g. zsh may expand the single arg "foo/sample*" into separate arguments
     /// "foo/sample1.xml foo/sample1.json foo/sample2.json foo/sample2.xml"
     public static strict = false;
-    public static args = [{ name: 'file' }];
+    public static args = { file: Args.string() };
 
     public static readonly flags = {
         dir: Flags.string({ char: 'd', summary: messages.getMessage('flags.dir.summary') }),

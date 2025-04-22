@@ -7,9 +7,8 @@
 
 /* eslint-disable unicorn/prefer-node-protocol */
 import { readFile } from 'fs';
-import * as path from 'path';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import * as glob from 'glob';
+import path = require('path');
+import glob = require('glob');
 import { isValidPageXML } from '../helpers/xml';
 import { SkuidPage } from '../types/types';
 
