@@ -19,12 +19,12 @@ SFDX plugin for managing Skuid metadata
 <!-- install -->
 # Installation
 
-First, ensure you have [installed `sfdx`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
+First, ensure you have [installed `sf cli`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
 
 Now, install the skuid-sfdx plugin:
 
 ```sh-session
-echo 'y' | sfdx plugins:install skuid-sfdx
+echo 'y' | sf plugins:install skuid-sfdx
 ```
 
 **Note**: When you install an `sfdx` plugin, it will ask you to trust the plugin by typing `y`. The `echo 'y'` above skips that step as a convenience. 
@@ -38,7 +38,7 @@ To use `skuid-sfdx` in a CI environment, you will either need to auto-trust the 
 <!-- usage -->
 # Usage
 
-To pull Skuid Pages from a Salesforce org to the filesystem, use the `skuid:page:pull` command. You can use various arguments to specify which Pages in the org you want to pull, and you can output the pages to a directory of your choice.
+To pull Skuid Pages from a Salesforce org to the filesystem, use the `skuid page pull` command. You can use various arguments to specify which Pages in the org you want to pull, and you can output the pages to a directory of your choice.
 
 For each Page, two files will be written:
 
@@ -49,20 +49,20 @@ For each Page, two files will be written:
 
 ```sh-session
 
-$ sfdx skuid:page:pull
+$ sf skuid page pull
 Wrote 85 pages to skuidpages
 
-$ sfdx skuid:page:pull --module SamplePages --dir pages/sample
+$ sf skuid page pull --module SamplePages --dir pages/sample
 Wrote 4 pages to pages/sample
 ```
 
 Page XML will be pretty-printed, with indentation automatically added, to make it easy to review and commit changes to Skuid Pages line-by-line to source control. (Note: tabs are used for indentation by default, but if you would like to use a different indentation, you can set the `SKUID_XML_INDENT` environment variable, e.g. `export SKUID_XML_INDENT="  "` to use 2 spaces instead of tabs.)
 
-Going the other direction, to move Skuid Pages from the filesystem up to a Salesforce org, use the `skuid:page:push` command. You can use file glob patterns to specify which Pages in your filesystem that you want to push, for example:
+Going the other direction, to move Skuid Pages from the filesystem up to a Salesforce org, use the `skuid page push` command. You can use file glob patterns to specify which Pages in your filesystem that you want to push, for example:
 
 ```sh-session
 
-$ sfdx skuid:page:push salesapp/*Foo*
+$ sf skuid page push salesapp/*Foo*
 3 Pages successfully pushed.
 
 ```
@@ -71,54 +71,54 @@ $ sfdx skuid:page:push salesapp/*Foo*
 
 <!-- commands -->
 # Commands
-* `sfdx skuid:page:pull`
+* `sf skuid page pull`
 
 ```
 Pull Skuid Pages from a Salesforce org into a local directory
 
 USAGE
-  $ sfdx skuid:page:pull [-m <string>] [-p <string>] [--nomodule] [-d <string>] [-u <string>] [--apiversion <string>] [--json] [--loglevel 
+  $ sf skuid page pull [-m <string>] [-p <string>] [--nomodule] [-d <string>] [-o <string>] [--apiversion <string>] [--json] [--loglevel 
   trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL]
 
 OPTIONS
   -d, --dir=dir                                                                     Output directory to write pages to.
   -m, --module=module                                                               Module name(s), separated by a comma.
   -p, --page=page                                                                   Page name(s), separated by a comma.
-  -u, --targetusername=targetusername                                               username or alias for the target org; overrides default target org
+  -o, --target-org                                                                  alias for the target org, replaces the previous -u flag,
   --apiversion=apiversion                                                           override the api version used for api requests made by this command
   --json                                                                            format output as json
   --loglevel=(trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL)  [default: warn] logging level for this command invocation
   --nomodule                                                                        Retrieve only those pages that do not have a module
 
 EXAMPLES
-  $ sfdx skuid:page:pull --targetusername myOrg@example.com --module CommunityPages
-  $ sfdx skuid:page:pull --nomodule
-  $ sfdx skuid:page:pull --page Page1,Page2,Page3 --dir newpages
+  $ sf skuid page pull -o myOrg --module CommunityPages
+  $ sf skuid page pull --nomodule
+  $ sf skuid page pull --page Page1,Page2,Page3 --dir newpages
 
 ```
 
-* `sfdx skuid:page:push`
+* `sf skuid page push`
 
 ```
 Push Skuid Pages from a directory to Skuid.
 
 USAGE
-  $ sfdx skuid:page:push [-d <string>] [-u <string>] [--apiversion <string>] [--json] [--loglevel 
+  $ sf skuid page push [-d <string>] [-o <string>] [--apiversion <string>] [--json] [--loglevel 
   trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL]
 
 OPTIONS
   -d, --dir=dir                                                                     Source directory in which page files reside.
-  -u, --targetusername=targetusername                                               username or alias for the target org; overrides default target org
+  -o, --target-org                                                                  alias for the target org, replaces the previous -u flag,
   --apiversion=apiversion                                                           override the api version used for api requests made by this command
   --json                                                                            format output as json
   --loglevel=(trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL)  [default: warn] logging level for this command invocation
 
 EXAMPLES
-  $ sfdx skuid:page:push --targetusername myOrg@example.com
-  $ sfdx skuid:page:push skuidpages/*
-  $ sfdx skuid:page:push -d=salespages SalesApp*
-  $ sfdx skuid:page:push pages/SalesAppHome.xml pages/CommissionDetails.xml
-  $ sfdx skuid:page:push **/*
+  $ sf skuid page push -o myOrg
+  $ sf skuid page push skuidpages/*
+  $ sf skuid page push -d=salespages SalesApp*
+  $ sf skuid page push pages/SalesAppHome.xml pages/CommissionDetails.xml
+  $ sf skuid page push **/*
 ```
 
 <!-- commandsstop -->
@@ -134,12 +134,12 @@ To get started with contributing to this plugin locally, clone the repo and then
 git clone https://github.com/skuid/skuid-sfdx.git
 cd skuid-sfdx
 yarn
-sfdx plugins:link
+sf plugins:link
 ```
 
 ## Orientation
 
-Logic for each command (e.g. `skuid:page:pull`) is defined within a specific file under `src/commands`, within a folder structure corresponding to that plugin's namespace (e.g. the `pull` command is within `skuid/page` directory).
+Logic for each command (e.g. `skuid page pull`) is defined within a specific file under `src/commands`, within a folder structure corresponding to that plugin's namespace (e.g. the `pull` command is within `skuid/page` directory).
 
 ## Tests
 

@@ -1,11 +1,19 @@
-import { flags, SfdxCommand } from '@salesforce/command';
-import { Messages } from '@salesforce/core';
-import { AnyJson, JsonMap } from '@salesforce/ts-types';
+/*
+ * Copyright (c) 2023, salesforce.com, inc.
+ * All rights reserved.
+ * Licensed under the BSD 3-Clause license.
+ * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ */
+
+/* eslint-disable no-param-reassign */
+/* eslint-disable unicorn/prefer-node-protocol */
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { Messages } from '@salesforce/core';
+import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
+import { AnyJson, JsonMap } from '@salesforce/ts-types';
 import { stringify } from '../../../helpers/jsonStringify';
 import { param } from '../../../helpers/param';
-
 import { formatXml } from '../../../helpers/xml';
 import {
   PullQueryParams,
@@ -19,47 +27,49 @@ Messages.importMessagesDirectory(__dirname);
 // or any library that is using the messages framework can also be loaded this way.
 const messages = Messages.loadMessages('skuid-sfdx', 'skuid-page-pull');
 
-export default class Pull extends SfdxCommand {
+export default class Pull extends SfCommand<AnyJson> {
 
-  public static description = messages.getMessage('commandDescription');
+  public static readonly summary = messages.getMessage('commandDescription');
+  public static readonly description = messages.getMessage('commandDescription');
 
-  public static examples = [
-  '$ sfdx skuid:page:pull --targetusername myOrg@example.com --module CommunityPages',
-  '$ sfdx skuid:page:pull --nomodule',
-  '$ sfdx skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
-  ];
+  public static readonly examples = [
+    '$ sf skuid:page:pull --target-org myOrg@example.com --module CommunityPages',
+    '$ sf skuid:page:pull --nomodule',
+    '$ sf skuid:page:pull --page Page1,Page2,Page3 --dir newpages'
+    ];
 
-  public static args = [];
-
-  protected static flagsConfig = {
+  public static readonly flags = {
     // flag with a value (-n, --name=VALUE)
-    module: flags.string({ char: 'm', description: messages.getMessage('moduleFlagDescription') }),
-    page: flags.string({ char: 'p', description: messages.getMessage('pageNameFlagDescription') }),
-    nomodule: flags.boolean({ description: messages.getMessage('noModuleFlagDescription') }),
-    dir: flags.string({ char: 'd', description: messages.getMessage('dirFlagDescription') })
+    module: Flags.string({ char: 'm', summary: messages.getMessage('flags.module.summary') }),
+    page: Flags.string({ char: 'p', summary: messages.getMessage('flags.page.summary') }),
+    nomodule: Flags.boolean({ summary: messages.getMessage('flags.nomodule.summary') }),
+    dir: Flags.string({ char: 'd', summary: messages.getMessage('flags.dir.summary') }),
+    'target-org': requiredOrgFlagWithDeprecations,
+    'api-version': orgApiVersionFlagWithDeprecations
   };
 
-  // Our command requires an SFDX username
-  protected static requiresUsername = true;
-
   public async run(): Promise<AnyJson> {
+    const { flags } = await this.parse(Pull);
     const {
       json,
       module,
       nomodule,
-      page
-    } = this.flags;
+      page,
+      'api-version': apiVersion
+    } = flags;
 
-    let { dir } = this.flags;
+    let dir = flags.dir as string;
     if (!dir) dir = 'skuidpages';
 
     const queryParams = {} as PullQueryParams;
 
     if (nomodule) queryParams.nomodule = true;
-    if (module) queryParams.module = module;
-    if (page) queryParams.page = page;
+    if (typeof module === 'string') queryParams.module = module;
+    if (typeof page === 'string') queryParams.page = page;
 
-    const conn = this.org.getConnection();
+    // when you get a Connection, pass the api-version flag to it
+    // that way, if the user specified an api version, the Connection is set
+    const conn = flags['target-org'].getConnection(apiVersion);
 
     let resultJSON: string = await conn.apex.get(`/skuid/api/v1/pages?${param(queryParams)}`);
 
@@ -67,16 +77,20 @@ export default class Pull extends SfdxCommand {
     // but trim off leading _ from the page names,
     // which will happen for pages not in a module
     if (json) {
-      const result: JsonMap = JSON.parse(resultJSON);
+      const result = JSON.parse(resultJSON) as JsonMap;
       Object.keys(result).forEach(pageName => {
         const pageResult = result[pageName];
-        const xmlKey = pageResult.hasOwnProperty('body') ? 'body' : 'content';
-        pageResult[xmlKey] = this.beautifyXml(pageResult[xmlKey], pageName);
+        const xmlKey = pageResult && Object.prototype.hasOwnProperty.call(pageResult, 'body') ? 'body' : 'content';
+        if (pageResult) {
+          if (typeof pageResult[xmlKey] === 'string') {
+            pageResult[xmlKey] = this.beautifyXml(pageResult[xmlKey] as string, pageName);
+          }
+        }
         if (pageName.startsWith('_')) {
           result[pageName.substring(1)] = pageResult;
           delete result[pageName];
         }
-        const newName = pageName.replace(/[\/\\]/g, '');
+        const newName = pageName.replace(/[/\\]/g, '');
         if (pageName !== newName) {
           result[newName] = result[pageName];
           delete result[pageName];
@@ -88,21 +102,23 @@ export default class Pull extends SfdxCommand {
     }
 
     // Otherwise, write a .json and .xml file in the specified output directory for every retrieved file.
-    if (!existsSync(dir)) mkdirSync(dir);
+    if (typeof dir === 'string' && !existsSync(dir)) mkdirSync(dir);
 
-    const skuidPages: Map<string, SkuidPage> = JSON.parse(resultJSON);
+    const skuidPages = JSON.parse(resultJSON) as Map<string, SkuidPage> ;
     // Clear out heap
-    resultJSON = null;
+    resultJSON = '';
     let numPages: number = 0;
 
-    Object.entries(skuidPages).forEach(([ pageName, skuidPage]) => {
+    (Object.entries(skuidPages) as Array<[string, SkuidPage]>).forEach(([ pageName, skuidPage ]) => {
       numPages++;
       // Trim leading _ off of the name, which will happen for pages not in a module
       if (pageName.startsWith('_')) pageName = pageName.substring(1);
-      pageName = pageName.replace(/[\/\\]/g, '');
+      pageName = pageName.replace(/[/\\]/g, '');
       const pageBasePath: string = resolve(dir, pageName);
-      const xml: string = skuidPage.body || skuidPage.content;
-      writeFileSync(pageBasePath + '.xml', this.beautifyXml(xml, pageName), 'utf8');
+      const xml: string|undefined = skuidPage.body ?? skuidPage.content;
+      if (xml) {
+        writeFileSync(pageBasePath + '.xml', this.beautifyXml(xml, pageName), 'utf8');
+      }
       delete skuidPage.body;
       delete skuidPage.content;
       // Remove all null props
@@ -114,17 +130,19 @@ export default class Pull extends SfdxCommand {
       // Clear out memory from our response
       delete skuidPages[pageName];
     });
-    this.ux.log('Wrote ' + numPages + ' pages to ' + dir);
+
+    this.log('Wrote ' + numPages + ' pages to ' + dir);
 
     return {};
   }
 
   private beautifyXml(xml: string, pageName: string): string {
+    let formattedXml: string;
     try {
-      xml = formatXml(xml);
+      formattedXml = formatXml(xml);
     } catch (err) {
-      this.ux.error(`Page ${pageName} has invalid XML.`);
+      this.error(`Page ${pageName} has invalid XML.`);
     }
-    return xml;
+    return formattedXml;
   }
 }

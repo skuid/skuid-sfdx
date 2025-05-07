@@ -1,4 +1,4 @@
-
+// eslint-disable-next-line header/header
 type SkuidPage = {
     apiVersion: string;
     name: string;
@@ -9,8 +9,8 @@ type SkuidPage = {
     masterPageUniqueId: string;
     isMasterPage: boolean;
     composerSettings: object;
-    body: string;
-    content: string;
+    body?: string;
+    content?: string;
 };
 
 type PagePost = {

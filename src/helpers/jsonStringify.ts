@@ -1,12 +1,13 @@
-
-import * as stableStringify from 'json-stable-stringify';
+// eslint-disable-next-line header/header
+import stableStringify = require('json-stable-stringify');
 
 /**
  * Serializes an object to a JSON string using a stable, prioritized key ordering
+ *
  * @param obj - the object to be stringified
  * @returns {String} a JSON stringy
  */
-function stringify(obj): string {
+function stringify(obj): string | undefined {
     return stableStringify(obj, {
         cmp(a, b) {
             // Prioritize name property
