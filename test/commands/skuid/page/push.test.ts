@@ -98,12 +98,11 @@ describe('skuid:page:push', () => {
         );
 
         const result = await cmd.run();
-        // @ts-expect-error pages does not exist on AnyJson
-        expect(result?.pages).to.contain('AnotherPageName');
-        // @ts-expect-error pages does not exist on AnyJson
-        expect(result?.pages).to.contain('foo_SomePageName');
-        // @ts-expect-error success does not exist on AnyJson
-        expect(result?.success).to.equal(true);
+        type PushResult = { pages: string[]; success: boolean };
+        const typedResult = result as PushResult;
+        expect(typedResult.pages).to.contain('AnotherPageName');
+        expect(typedResult.pages).to.contain('foo_SomePageName');
+        expect(typedResult.success).to.equal(true);
     });
 
     it('only pushes pages matching a file glob', async () => {
