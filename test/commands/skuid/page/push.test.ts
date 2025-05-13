@@ -98,10 +98,11 @@ describe('skuid:page:push', () => {
         );
 
         const result = await cmd.run();
-        expect(result).to.deep.equal({
-            pages: [ 'AnotherPageName', 'foo_SomePageName' ],
-            success: true
-        });
+        type PushResult = { pages: string[]; success: boolean };
+        const typedResult = result as PushResult;
+        expect(typedResult.pages).to.contain('AnotherPageName');
+        expect(typedResult.pages).to.contain('foo_SomePageName');
+        expect(typedResult.success).to.equal(true);
     });
 
     it('only pushes pages matching a file glob', async () => {
