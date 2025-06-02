@@ -126,7 +126,10 @@ export default class Pull extends SfCommand<AnyJson> {
         if (skuidPage[prop] === null ) delete skuidPage[prop];
       }
       // Serialize using a stable sorting algorithm
-      writeFileSync(pageBasePath + '.json', stringify(skuidPage), 'utf8');
+      const serializedPage = stringify(skuidPage);
+      if (serializedPage) {
+        writeFileSync(pageBasePath + '.json', serializedPage, 'utf8');
+      }
       // Clear out memory from our response
       delete skuidPages[pageName];
     });
