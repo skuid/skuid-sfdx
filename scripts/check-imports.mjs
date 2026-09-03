@@ -1,30 +1,52 @@
 /*
- * Fails if any bare import in src/ or test/ is not declared in package.json.
+ * Fails if any bare import in src/ or test/ is not DECLARED in package.json.
  *
- * This exists because `glob` was imported here but never declared, which shipped
- * broken to every consumer whose install hoisted glob 9+ (skuid-sfdx#29).
- * Ordinary tests do not catch that: they resolve against whatever happens to be
- * in node_modules rather than against what package.json actually declares.
+ * This exists because `glob` was imported here but never declared. It resolved
+ * anyway -- some transitive dependency had hoisted a copy into node_modules --
+ * so every test passed while the published plugin was broken for any consumer
+ * whose own install resolved a different major (skuid-sfdx#29).
  *
- * Scope: this checks specifiers written in src/ and test/. It does NOT catch a
- * dependency that some other package require()s at runtime -- `sinon`, which
- * @salesforce/core's TestContext loads internally, is that case, and the guard
- * for it is running the suite in a clean checkout (which CI does, and which
- * `yarn check:isolated` reproduces locally).
+ * That is why resolvability is not the test. At the time of writing this tree
+ * has 439 packages installed transitively that are absent from package.json;
+ * any of them would resolve cleanly. Declaration is what actually matters,
+ * because a consumer only gets what is declared.
  *
- * It also fails when a module resolves from OUTSIDE the project directory. Node
- * walks up the directory tree, so a checkout nested inside another checkout of
- * the same repo -- a git worktree, say -- silently borrows the parent's
- * dependencies. That is exactly how the missing `sinon` passed locally and
- * failed in CI.
+ * Three distinct failures, each a real bug with a different fix:
+ *
+ *   not declared            imported but missing from package.json -- ships broken
+ *   declared, not installed package.json and the lockfile disagree
+ *   resolved outside        Node walks UP the directory tree, so a checkout
+ *                           nested inside another checkout of this repo (a git
+ *                           worktree, say) borrows the parent's node_modules.
+ *                           Deleting node_modules locally does not help.
+ *
+ * Scope: specifiers written in src/ and test/. A dependency that some other
+ * package require()s at runtime is out of scope -- `sinon`, loaded internally by
+ * @salesforce/core's TestContext, is that case. The guard for it is running the
+ * suite in a clean checkout: CI does, and `yarn check:isolated` does locally.
  */
-import { createRequire } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(join(projectRoot, 'noop.cjs'));
+const pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
+
+const declared = new Set([
+  ...Object.keys(pkg.dependencies ?? {}),
+  ...Object.keys(pkg.devDependencies ?? {}),
+  ...Object.keys(pkg.peerDependencies ?? {}),
+  ...Object.keys(pkg.optionalDependencies ?? {}),
+]);
+const builtins = new Set(builtinModules);
+
+// "@scope/pkg/sub" -> "@scope/pkg";  "pkg/sub" -> "pkg"
+const packageNameOf = (spec) => {
+  const parts = spec.split('/');
+  return spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+};
 
 const collectTsFiles = (dir, skip = new Set(['node_modules', 'lib', 'fixtures', '.git'])) => {
   const out = [];
@@ -39,40 +61,54 @@ const collectTsFiles = (dir, skip = new Set(['node_modules', 'lib', 'fixtures', 
 
 const files = [...collectTsFiles(join(projectRoot, 'src')), ...collectTsFiles(join(projectRoot, 'test'))];
 
-// Bare specifiers only: anything not starting with '.' or 'node:'.
 const specifiers = new Map();
 for (const file of files) {
   const source = readFileSync(file, 'utf8');
   for (const [, spec] of source.matchAll(/(?:from|import)\s*\(?\s*['"]([^.'"][^'"]*)['"]/g)) {
-    if (spec.startsWith('node:')) continue;
     if (!specifiers.has(spec)) specifiers.set(spec, file);
   }
 }
 
 const failures = [];
+let checked = 0;
 for (const [spec, firstSeenIn] of [...specifiers].sort()) {
+  const bare = spec.startsWith('node:') ? spec.slice(5) : spec;
+  if (builtins.has(bare) || builtins.has(packageNameOf(bare))) continue;
+
   const where = relative(projectRoot, firstSeenIn);
+  const name = packageNameOf(spec);
+  checked++;
+
+  if (!declared.has(name)) {
+    failures.push(
+      `${spec} -- "${name}" is NOT DECLARED in package.json (imported by ${where}).\n` +
+      '      It may resolve here from a transitive copy, but consumers only get what is\n' +
+      '      declared. Add it to dependencies (or devDependencies for test-only use).'
+    );
+    continue;
+  }
+
   let resolved;
   try {
     resolved = require.resolve(spec);
   } catch {
-    failures.push(`${spec} -- UNRESOLVABLE (imported by ${where}). Add it to package.json.`);
+    failures.push(`${spec} -- declared but NOT INSTALLED; package.json and the lockfile disagree. Re-run install.`);
     continue;
   }
   if (!resolved.startsWith(projectRoot)) {
     failures.push(
       `${spec} -- resolved OUTSIDE the project, from ${resolved}.\n` +
-      `      It is not installed here; a parent directory is supplying it. ` +
-      `Declare it in package.json and verify in a checkout that is not nested inside another.`
+      '      A parent directory is supplying it. Verify in a checkout that is not nested\n' +
+      '      inside another checkout of this repo.'
     );
     continue;
   }
-  console.log(`  ok  ${spec}`);
+  console.log(`  ok  ${spec.padEnd(34)} (declared: ${name})`);
 }
 
 if (failures.length) {
-  console.error(`\n${failures.length} undeclared or externally-resolved import(s):\n`);
+  console.error(`\n${failures.length} import problem(s):\n`);
   for (const f of failures) console.error(`  ✗ ${f}`);
   process.exit(1);
 }
-console.log(`\n${specifiers.size} bare imports, all declared and resolved from within the project.`);
+console.log(`\n${checked} bare imports, all declared in package.json and resolved from within the project.`);

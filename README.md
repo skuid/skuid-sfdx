@@ -235,7 +235,7 @@ that gap and runs in CI as the `harden` job:
 
 | Command | Catches |
 | --- | --- |
-| `yarn check:imports` | A bare import in `src/` or `test/` that isn't declared in `package.json`, or that resolves from *outside* this directory. `glob` was undeclared and shipped broken to consumers. |
+| `yarn check:imports` | A bare import in `src/` or `test/` whose package isn't declared in `package.json`, is declared but not installed, or resolves from *outside* this directory. Resolvability is deliberately not the test: hundreds of packages are installed transitively here and would resolve fine, but consumers only get what is declared -- which is exactly how `glob` shipped broken. |
 | `yarn check:artifact` | Packs the plugin, installs it somewhere clean with only its declared production dependencies, and imports every command. The suite can pass while the published plugin is broken; this is what notices. |
 | `yarn check:audit` | Known advisories. High and critical in shipped dependencies fail; lower severities and the dev tree report only. |
 | `yarn check:readme` | The flag tables above drifting from the real command manifest. |
