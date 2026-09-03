@@ -44,6 +44,32 @@ jobs:
       - name: Run tests
         run: yarn test
 
+  # The single required status check for master.
+  #
+  # Branch protection requires this job and nothing else, so the matrix above can gain
+  # or drop Node versions without anyone editing repo settings. That coupling is what
+  # broke before: renaming the jobs left two dead contexts ("node-latest",
+  # "node-latest-windows") still required, and every PR sat waiting forever on a status
+  # that nothing would ever report.
+  #
+  # Deliberately does not depend on the canary job -- that one is advisory, and gating
+  # merges on it would hand a brand-new Node release the power to block every PR.
+  ci-gate:
+    name: ci-gate
+    needs: [test]
+    # always() so the gate still runs (and reports a status) when a matrix job fails,
+    # is cancelled, or is skipped. Without it the gate would itself be skipped and
+    # report nothing, leaving the PR stuck in exactly the state described above.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      # needs.test.result aggregates the whole matrix: "success" only if every leg
+      # succeeded, otherwise failure / cancelled / skipped.
+      - name: Require every matrix job to have succeeded
+        run: |
+          echo "test matrix result: ${{ needs.test.result }}"
+          [ "${{ needs.test.result }}" = "success" ]
+
   # Early warning for the next Node major. Advisory only: never blocks a merge.
   canary-node-latest:
     name: canary (node latest, advisory)
