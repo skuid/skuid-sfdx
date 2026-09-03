@@ -92,11 +92,21 @@ jobs:
       - name: Packed artifact installs and loads standalone
         run: node scripts/check-artifact.mjs
 
-      # High and critical advisories in dependencies that ship fail the build.
-      # Lower severities and the dev tree report without failing -- advisories
-      # here are often transitive and sometimes genuinely unfixable, and a hard
-      # gate on those is how master stayed red for months before AB#545952.
-      - name: Dependency advisories
+      # Advisory, not blocking. The script still fails on high/critical advisories
+      # in dependencies that ship, so the finding is loud in the log and shows as
+      # a failed step -- but continue-on-error keeps it from failing the job, and
+      # therefore from blocking a merge.
+      #
+      # The reason is that advisories arrive from outside on their own schedule: a
+      # new CVE in a transitive dependency can turn every PR red with no change to
+      # the code, and as AB#545957 found, such advisories are frequently unfixable
+      # in place because a parent caps the version. Master already stayed red for
+      # months that way before AB#545952. Nobody should be unable to merge a
+      # typo fix because someone else's package got an advisory overnight.
+      #
+      # Everything else in this job is deterministic and stays blocking.
+      - name: Dependency advisories (advisory only -- see comment)
+        continue-on-error: true
         run: node scripts/check-audit.mjs
 
   # The single required status check for master.
