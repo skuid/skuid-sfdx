@@ -5,22 +5,21 @@
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-/* eslint-disable no-param-reassign */
 import { Logger, Messages, SfError } from '@salesforce/core';
 import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson } from '@salesforce/ts-types';
 import { Args } from '@oclif/core';
-import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles';
-import { condenseXml } from '../../../helpers/xml';
+import { getPageDefinitionsFromFileGlobs } from '../../../helpers/readPageFiles.js';
+import { condenseXml } from '../../../helpers/xml.js';
 import {
     PagePost,
     PagePostResult,
     SkippedPageFile,
     SkuidPage
-} from '../../../types/types';
+} from '../../../types/types.js';
 
 // Initialize Messages with the current plugin directory
-Messages.importMessagesDirectory(__dirname);
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 
 // Load the specific messages for this file. Messages from @salesforce/command, @salesforce/core,
 // or any library that is using the messages framework can also be loaded this way.

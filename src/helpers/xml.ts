@@ -4,14 +4,16 @@
  * Licensed under the BSD 3-Clause license.
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-// Importing vkbeautify with explicit type annotations
-import { xml, xmlmin } from 'vkbeautify';
+// vkbeautify is CommonJS and ships no type declarations. Its named exports are
+// not reachable through ESM interop -- only the default export is -- so reach
+// through the default and keep the explicit signatures below.
+import vkbeautify from 'vkbeautify';
 
 // Explicitly define types for vkbeautify functions
 type VkBeautifyXml = (xmlString: string, indent: string) => string;
 type VkBeautifyXmlmin = (prettyXml: string) => string;
-const typedXml: VkBeautifyXml = xml as VkBeautifyXml;
-const typedXmlmin: VkBeautifyXmlmin = xmlmin as VkBeautifyXmlmin;
+const typedXml = vkbeautify.xml as VkBeautifyXml;
+const typedXmlmin = vkbeautify.xmlmin as VkBeautifyXmlmin;
 
 /**
  * Pretty-prints a string of XML, adding indentation and newlines between tags

@@ -21,6 +21,10 @@ SFDX plugin for managing Skuid metadata
 
 First, ensure you have [installed `sf cli`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
 
+**Requirements:** Node.js 22.19.0 or newer. Recent `sf` CLI releases bundle their
+own Node (24.x at time of writing), so installing the plugin into `sf` satisfies
+this automatically. Version `0.5.x` was the last release supporting Node 18 and 20.
+
 Now, install the skuid-sfdx plugin:
 
 ```sh-session

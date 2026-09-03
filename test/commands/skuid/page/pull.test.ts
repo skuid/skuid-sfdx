@@ -4,19 +4,15 @@
  * Licensed under the BSD 3-Clause license.
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-// eslint-disable-next-line unicorn/prefer-node-protocol
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 import { Config } from '@oclif/core';
-import { sync as rmSync } from 'rimraf';
+import { rmSync } from 'node:fs';
 import { expect } from 'chai';
-import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
+import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
-import Pull from '../../../../src/commands/skuid/page/pull';
-import { formatXml } from '../../../../src/helpers/xml';
+import Pull from '../../../../src/commands/skuid/page/pull.js';
+import { formatXml } from '../../../../src/helpers/xml.js';
 
-// Explicitly define types for rimraf functions
-type rimrafRmSync = (value: string) => void;
-const typedRmSync: rimrafRmSync = rmSync as rimrafRmSync;
 
 const v1PageObject = {
   'apiVersion': 'v1',
@@ -61,13 +57,13 @@ const v1PageObjectWithSlashModulePrettyXML = Object.assign({}, v1PageObjectWithS
 describe('skuid page pull', () => {
 
   const clean = (): void => {
-    typedRmSync('foo');
-    typedRmSync('skuidpages');
+    rmSync('foo', { recursive: true, force: true });
+    rmSync('skuidpages', { recursive: true, force: true });
   };
 
   const $$ = new TestContext();
   const testData = new MockTestOrgData();
-  const config = new Config({ root: resolve(__dirname, '../../../package.json') });
+  const config = new Config({ root: resolve(import.meta.dirname, '../../../package.json') });
 
   beforeEach(async () => {
     await $$.stubAuths(testData);
@@ -83,8 +79,7 @@ describe('skuid page pull', () => {
   // This allows us to test messages that are logged to the console
   const testLogMessages = (cmd: Pull, messages: string[]): void => {
       let i = 0;
-      // eslint-disable-next-line no-param-reassign
-      cmd.log = (result): void => {
+        cmd.log = (result): void => {
           expect(result).to.contain(messages[i]);
           i++;
       };

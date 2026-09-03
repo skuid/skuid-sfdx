@@ -1,4 +1,3 @@
-// eslint-disable-next-line header/header
 type SkuidPage = {
     apiVersion: string;
     name: string;
