@@ -110,6 +110,35 @@ even from `.ts`; there is no `__dirname` (use `import.meta.dirname`); some
 CommonJS dependencies expose nothing through named imports and must be reached
 via their default export (`vkbeautify` is one).
 
+## This repository is public
+
+Everything you write into a commit message, PR title, PR body or review comment
+is published. Treat those as public documentation, not as a work log.
+
+- **Reference work items by ID only.** `AB#545951:` in a commit subject is fine
+  and ADO links it automatically. Do **not** quote a work item's contents,
+  restate internal discussion, or summarise what QA reported -- the public repo
+  records *what* changed, the tracker records *why* and *who said what*.
+- **Never include real environment data.** No org usernames or logins, no org
+  names, no real page, record or module names, no inventory counts. Use the
+  placeholders the docs already use (`myOrg@example.com`, `SalesApp`), and when
+  you need to describe a real investigation, describe the shape of the data
+  rather than the data.
+- **Do not paste tool output verbatim** without reading it first. `--help`
+  renders the resolved default org of whoever ran it; `sf org list`, `sf plugins`
+  and error traces carry usernames and absolute paths. This has already happened:
+  a commit message documenting a guard *against* leaking an org username leaked
+  one by quoting the offending line.
+- **Name unreleased formats neutrally; do not narrate the roadmap.** The code has
+  to match `<NtxPage>`, so listing it as a supported document root is
+  unavoidable and it ships in the npm tarball anyway. Internal codenames,
+  feature-flag names, release versions and repository names are a different
+  matter and belong nowhere near this repo.
+
+If you have already written something and then notice it, say so. PR bodies and
+comments are editable; merged commit messages effectively are not, because
+rewriting public history needs a force-push.
+
 ## Conventions
 
 - Commit subjects start with the work item: `AB#545951: Fix ...`. ADO links

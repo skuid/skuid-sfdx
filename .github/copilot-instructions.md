@@ -50,6 +50,21 @@ They account for most of this repo's shipped defects.
 - If you add a check, prove it fails by reproducing the real bug, not a
   stand-in.
 
+## This repository is public
+
+Commit messages, PR titles, PR bodies and review comments are all published.
+
+- Reference work items by ID (`AB#545951:`) but never quote their contents or
+  restate internal discussion.
+- Never include real environment data: no org usernames or logins, org names,
+  real page/record/module names, or inventory counts. Use placeholders such as
+  `myOrg@example.com`.
+- Do not paste tool output verbatim without reading it. `--help` renders the
+  resolved default org of whoever ran it; `sf org list` and error traces carry
+  usernames and absolute paths.
+- The code must match `<NtxPage>`, so naming supported document roots is fine.
+  Internal codenames, feature-flag names and release versions are not.
+
 ## Conventions
 
 Commit subjects start with the work item: `AB#545951: Fix ...` — ADO links
