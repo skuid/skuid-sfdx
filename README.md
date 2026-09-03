@@ -226,6 +226,30 @@ same thing CI runs.
 > dependency change, copy the tracked files somewhere outside the parent
 > checkout, install there, and run the suite.
 
+## Hardening checks
+
+`yarn test` runs mocha and eslint. It cannot catch a class of bug this repo has
+shipped more than once, because it resolves everything against the repo's own
+`node_modules` and never exercises the packaged output. `yarn harden` covers
+that gap and runs in CI as the `harden` job:
+
+| Command | Catches |
+| --- | --- |
+| `yarn check:imports` | A bare import in `src/` or `test/` that isn't declared in `package.json`, or that resolves from *outside* this directory. `glob` was undeclared and shipped broken to consumers. |
+| `yarn check:artifact` | Packs the plugin, installs it somewhere clean with only its declared production dependencies, and imports every command. The suite can pass while the published plugin is broken; this is what notices. |
+| `yarn check:audit` | Known advisories. High and critical in shipped dependencies fail; lower severities and the dev tree report only. |
+| `yarn check:readme` | The flag tables above drifting from the real command manifest. |
+
+One more, not run in CI because CI gets it for free from a clean checkout:
+
+```sh-session
+yarn check:isolated
+```
+
+That copies the tracked files outside this checkout, installs, and runs the
+suite with nothing borrowable -- see the warning under [Tests](#tests) for why
+that matters.
+
 ## Updating docs
 
 The command reference above is maintained **by hand**. Do not run

@@ -47,6 +47,58 @@ jobs:
       - name: Run tests
         run: yarn test
 
+  # Checks the matrix above structurally cannot perform, because each needs a
+  # clean dependency resolution, the packed artifact, or the generated command
+  # manifest -- none of which `yarn test` exercises. Every one of these
+  # corresponds to a bug that actually shipped from this repo.
+  #
+  # Runs once on Linux; the logic is OS-independent.
+  harden:
+    name: harden
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # Produces lib/ and oclif.manifest.json, which the checks below read.
+      - name: Build
+        run: yarn prepack
+
+      # Every bare import in src/ and test/ must be declared in package.json.
+      # `glob` was imported but never declared, and shipped broken to every
+      # consumer whose install hoisted glob 9+ (#29).
+      - name: Undeclared imports
+        run: node scripts/check-imports.mjs
+
+      # The README's flag tables must match the manifest. It documented a
+      # --loglevel flag that no longer exists and spelled --api-version wrong.
+      - name: README matches the command manifest
+        run: node scripts/check-readme-flags.mjs
+
+      # Pack, install with only the declared production dependencies somewhere
+      # clean, and import every command from the packed output. This is the
+      # check that would have caught #29 before release: the suite passed while
+      # the published plugin was broken, because tests run against the repo's
+      # own node_modules and never against a fresh resolution.
+      - name: Packed artifact installs and loads standalone
+        run: node scripts/check-artifact.mjs
+
+      # High and critical advisories in dependencies that ship fail the build.
+      # Lower severities and the dev tree report without failing -- advisories
+      # here are often transitive and sometimes genuinely unfixable, and a hard
+      # gate on those is how master stayed red for months before AB#545952.
+      - name: Dependency advisories
+        run: node scripts/check-audit.mjs
+
   # The single required status check for master.
   #
   # Branch protection requires this job and nothing else, so the matrix above can gain
@@ -59,7 +111,7 @@ jobs:
   # merges on it would hand a brand-new Node release the power to block every PR.
   ci-gate:
     name: ci-gate
-    needs: [test]
+    needs: [test, harden]
     # always() so the gate still runs (and reports a status) when a matrix job fails,
     # is cancelled, or is skipped. Without it the gate would itself be skipped and
     # report nothing, leaving the PR stuck in exactly the state described above.
@@ -68,10 +120,11 @@ jobs:
     steps:
       # needs.test.result aggregates the whole matrix: "success" only if every leg
       # succeeded, otherwise failure / cancelled / skipped.
-      - name: Require every matrix job to have succeeded
+      - name: Require the matrix and the hardening checks to have succeeded
         run: |
           echo "test matrix result: ${{ needs.test.result }}"
-          [ "${{ needs.test.result }}" = "success" ]
+          echo "harden result:      ${{ needs.harden.result }}"
+          [ "${{ needs.test.result }}" = "success" ] && [ "${{ needs.harden.result }}" = "success" ]
 
   # Early warning for the next Node major. Advisory only: never blocks a merge.
   canary-node-latest:
