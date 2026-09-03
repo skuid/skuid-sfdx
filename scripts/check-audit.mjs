@@ -25,14 +25,37 @@ const pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
 const work = mkdtempSync(join(tmpdir(), 'skuid-sfdx-audit-'));
 
 const auditIn = (dir, omitDev) => {
+  // npm audit exits 0 when clean and non-zero when it finds advisories, and puts
+  // its report on stdout either way -- so a non-zero exit is not itself an error.
+  // What IS an error is stdout that will not parse, or that carries no
+  // `vulnerabilities` key: that means audit never ran (registry unreachable,
+  // auth failure, npm crash). Returning "no advisories" in that case would let a
+  // security check pass while auditing nothing, so it throws instead and the
+  // caller fails the build.
+  let stdout;
   try {
-    execFileSync('npm', ['audit', '--json', ...(omitDev ? ['--omit=dev'] : [])],
-      { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return {};
+    stdout = execFileSync('npm', ['audit', '--json', ...(omitDev ? ['--omit=dev'] : [])],
+      { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
-    // npm audit exits non-zero when it finds anything; the report is still on stdout.
-    try { return JSON.parse(e.stdout || '{}').vulnerabilities ?? {}; } catch { return {}; }
+    stdout = e.stdout;
   }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(stdout ?? '');
+  } catch {
+    throw new Error(
+      `npm audit produced no parseable JSON, so nothing was audited: ` +
+      `${String(stdout ?? '(no output)').trim().slice(0, 300)}`
+    );
+  }
+  if (parsed.error) {
+    throw new Error(`npm audit reported an error: ${JSON.stringify(parsed.error).slice(0, 300)}`);
+  }
+  if (typeof parsed.vulnerabilities !== 'object' || parsed.vulnerabilities === null) {
+    throw new Error('npm audit JSON has no "vulnerabilities" object, so its output cannot be trusted.');
+  }
+  return parsed.vulnerabilities;
 };
 
 const report = (label, vulns) => {
@@ -52,7 +75,7 @@ try {
     name: 'audit-probe', version: '1.0.0', private: true,
     dependencies: pkg.dependencies ?? {}, devDependencies: pkg.devDependencies ?? {},
   }, null, 2));
-  execFileSync('npm', ['install', '--package-lock-only', '--loglevel=error'],
+  execFileSync('npm', ['install', '--package-lock-only', '--loglevel=error', '--fetch-retries=1', '--fetch-timeout=20000'],
     { cwd: work, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] });
 
   console.log('\nRuntime dependencies (shipped to consumers):');

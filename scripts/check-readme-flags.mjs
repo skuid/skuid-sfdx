@@ -50,7 +50,12 @@ const readme = readFileSync(join(projectRoot, 'README.md'), 'utf8');
 const documented = new Set([...readme.matchAll(/\|\s*`-?\w?,?\s*--([a-z-]+)[=`]/g)].map(m => m[1]));
 
 const real = new Set();
-for (const command of Object.values(manifest.commands)) for (const f of Object.keys(command.flags)) real.add(f);
+// `flags` can legitimately be absent for a command that declares none; without
+// the guard Object.keys(undefined) throws and the check fails for a reason that
+// has nothing to do with README drift.
+for (const command of Object.values(manifest.commands)) {
+  for (const f of Object.keys(command.flags ?? {})) real.add(f);
+}
 
 // --- Guards against the two ways machine-specific data reaches this file ---
 //

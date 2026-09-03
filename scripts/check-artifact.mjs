@@ -8,7 +8,7 @@
  * the packed output nor a fresh dependency resolution was ever exercised.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,8 +26,11 @@ try {
   const tarball = join(work, packed);
   console.log(`  packed ${packed}`);
 
+  // mkdirSync, not an external `mkdir`: on Windows that is a shell builtin with
+  // no executable, so execFile would fail with ENOENT. tar is fine -- Windows has
+  // shipped tar.exe since Server 2019 / Windows 10 1803.
   const extracted = join(work, 'pkg');
-  run('mkdir', ['-p', extracted]);
+  mkdirSync(extracted, { recursive: true });
   run('tar', ['xzf', tarball, '-C', extracted, '--strip-components=1']);
 
   for (const required of ['lib', 'messages', 'oclif.manifest.json', 'package.json']) {
@@ -37,7 +40,7 @@ try {
 
   // Fresh resolution of the DECLARED dependencies, which is what a consumer gets.
   console.log('  installing production dependencies in isolation...');
-  run('npm', ['install', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=error'], extracted);
+  run('npm', ['install', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=error', '--fetch-retries=1', '--fetch-timeout=20000'], extracted);
 
   // Every command in the manifest must import cleanly and expose a command class.
   console.log('  importing every command from the packed output...');
@@ -50,8 +53,11 @@ try {
       const rel = './lib/commands/' + id.split(':').join('/') + '.js';
       const mod = await import(rel);
       if (typeof mod.default !== 'function') { console.error(id + ': no command class default export'); process.exit(1); }
-      if (!mod.default.flags || !Object.keys(mod.default.flags).length) { console.error(id + ': no flags'); process.exit(1); }
-      console.log('    ok ' + id + ' -> ' + mod.default.name + ' [' + Object.keys(mod.default.flags).join(', ') + ']');
+      // Flags are reported, not required. This check is about whether the packed
+      // artifact loads; a command with no flags of its own is legitimate and
+      // should not be rejected for a reason unrelated to that.
+      const flags = Object.keys(mod.default.flags ?? {});
+      console.log('    ok ' + id + ' -> ' + mod.default.name + (flags.length ? ' [' + flags.join(', ') + ']' : ' (no flags)'));
     }
   `;
   process.stdout.write(run(process.execPath, ['--input-type=module', '-e', probe], extracted));
