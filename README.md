@@ -259,7 +259,14 @@ this public file. It also overwrites the hand-written Usage prose. For the same
 reason there is no `version` npm script, so `npm version` is safe to run.
 
 When you add or change a flag, update the table by hand from
-`sf skuid page <command> --help`.
+`sf skuid page <command> --help` -- but **do not paste the `[default: ...]`
+values**. `--help` resolves those against the machine it runs on, so your own
+default org username appears there. Describe defaults in prose instead, the way
+`--dir` does above.
+
+`yarn check:readme` enforces all of this: it fails if a documented flag does not
+exist, if a real flag is missing, if the oclif markers reappear, or if a
+`[default: ...]` makes it into this file.
 
 ## Releasing
 

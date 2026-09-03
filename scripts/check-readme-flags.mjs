@@ -52,6 +52,37 @@ const documented = new Set([...readme.matchAll(/\|\s*`-?\w?,?\s*--([a-z-]+)[=`]/
 const real = new Set();
 for (const command of Object.values(manifest.commands)) for (const f of Object.keys(command.flags)) real.add(f);
 
+// --- Guards against the two ways machine-specific data reaches this file ---
+//
+// 1. `oclif readme` fills content between its markers. Removing the markers
+//    neutralised it (verified: it is now a no-op on this README), so their
+//    reappearance re-arms a command that overwrites hand-written prose and
+//    bakes in the running machine's resolved flag defaults.
+// 2. `sf skuid page <cmd> --help` renders the resolved default target-org, e.g.
+//    "[default: someone@their-org.example]". The docs instruct updating the
+//    tables from --help, so pasting it verbatim leaks whoever ran it.
+//
+// Neither belongs in a public file, so both fail rather than being discouraged.
+const guardFailures = [];
+
+const markers = ['<!-- usage -->', '<!-- commands -->', '<!-- toc -->'];
+const presentMarkers = markers.filter(m => readme.includes(m));
+if (presentMarkers.length) {
+  guardFailures.push(
+    `oclif generation markers present: ${presentMarkers.join(', ')}.\n` +
+    '    These re-arm `oclif readme`, which overwrites the hand-written reference and\n' +
+    "    writes the running machine's default org into it. Remove them."
+  );
+}
+
+for (const [match] of readme.matchAll(/\[default:[^\]]*\]/g)) {
+  guardFailures.push(
+    `machine-specific default documented: ${match}\n` +
+    '    --help renders defaults resolved from whoever ran it, including their default\n' +
+    '    org username. Describe defaults in prose instead, e.g. "Defaults to `skuidpages`".'
+  );
+}
+
 const undocumented = [...real].filter(f => !documented.has(f)).sort();
 const phantom = [...documented].filter(f => !real.has(f)).sort();
 
@@ -59,6 +90,11 @@ console.log(`  manifest flags:   ${[...real].sort().join(', ')}`);
 console.log(`  README documents: ${[...documented].sort().join(', ')}`);
 
 let failed = false;
+if (guardFailures.length) {
+  console.error('');
+  for (const g of guardFailures) console.error(`  ✗ ${g}`);
+  failed = true;
+}
 if (undocumented.length) {
   console.error(`\n  ✗ real flags missing from the README: ${undocumented.join(', ')}`);
   failed = true;
@@ -68,5 +104,8 @@ if (phantom.length) {
   console.error('    Update the tables from `sf skuid page <command> --help`.');
   failed = true;
 }
-if (!failed) console.log(`\n  README matches the manifest: ${real.size} flags, none missing, none invented.`);
+if (!failed) {
+  console.log(`\n  README matches the manifest: ${real.size} flags, none missing, none invented.`);
+  console.log('  No oclif markers, no machine-specific defaults.');
+}
 process.exit(failed ? 1 : 0);
