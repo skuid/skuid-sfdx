@@ -1,58 +1,48 @@
 skuid-sfdx
 ==========
 
-SFDX plugin for managing Skuid metadata
+`sf` CLI plugin for managing Skuid metadata
 
 [![Version](https://img.shields.io/npm/v/skuid-sfdx.svg)](https://npmjs.org/package/skuid-sfdx)
 [![CI/CD](https://github.com/skuid/skuid-sfdx/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/skuid/skuid-sfdx/actions/workflows/ci.yml)
-[![Codecov](https://codecov.io/gh/skuid/skuid-sfdx/branch/master/graph/badge.svg)](https://codecov.io/gh/skuid/skuid-sfdx)
 [![Downloads/week](https://img.shields.io/npm/dw/skuid-sfdx.svg)](https://npmjs.org/package/skuid-sfdx)
 [![License](https://img.shields.io/npm/l/skuid-sfdx.svg)](https://github.com/skuid/skuid-sfdx/blob/master/package.json)
 
-<!-- toc -->
-* [Installation](#installation)
-* [Usage](#usage)
-* [Commands](#commands)
-* [Contributing](#contributing)
-<!-- tocstop -->
+- [Installation](#installation)
+- [Usage](#usage)
+- [Command reference](#command-reference)
+- [Contributing](#contributing)
 
-<!-- install -->
 # Installation
 
-First, ensure you have [installed `sf cli`](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
+First, ensure you have [installed the `sf` CLI](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm).
 
 **Requirements:** Node.js 22.19.0 or newer. Recent `sf` CLI releases bundle their
-own Node (24.x at time of writing), so installing the plugin into `sf` satisfies
-this automatically. Version `0.5.x` was the last release supporting Node 18 and 20.
-
-Now, install the skuid-sfdx plugin:
+own Node runtime (24.x at the time of writing), so installing the plugin into
+`sf` satisfies this automatically. `0.5.x` was the last release supporting
+Node 18 and 20.
 
 ```sh-session
-echo 'y' | sf plugins:install skuid-sfdx
+echo 'y' | sf plugins install skuid-sfdx
 ```
 
-**Note**: When you install an `sfdx` plugin, it will ask you to trust the plugin by typing `y`. The `echo 'y'` above skips that step as a convenience. 
+**Note:** installing a plugin prompts you to trust it. The `echo 'y'` answers
+that prompt for you. Only Salesforce can sign plugins, so third-party plugins
+are always untrusted and always prompt.
 
-Why do this? Currently, only Salesforce's internal developers can sign plugins. Because other plugin creators *cannot* sign their SFDX plugins so they are "trusted," the `echo 'y'` is necessary for the time being.
+In CI, either pipe `y` as above or add the plugin to your list of trusted
+plugins.
 
-To use `skuid-sfdx` in a CI environment, you will either need to auto-trust the plugin with `echo 'y'` as above or add the plugin to a whitelist of trusted SFDX plugins, [as described in the "CI and CD Impact" section of this Salesforce blog post](https://developer.salesforce.com/blogs/2017/10/salesforce-dx-cli-plugin-update.html).
-
-<!-- installstop -->
-
-<!-- usage -->
 # Usage
 
-To pull Skuid Pages from a Salesforce org to the filesystem, use the `skuid page pull` command. You can use various arguments to specify which Pages in the org you want to pull, and you can output the pages to a directory of your choice.
+## Pulling pages out of an org
 
-For each Page, two files will be written:
+`sf skuid page pull` writes **two files per page** into an output directory:
 
-  - an XML file containing the Page's layout
-  - a JSON file containing metadata about the Page
-
-### Example
+- a `.xml` file containing the page's layout
+- a `.json` file containing the page's metadata
 
 ```sh-session
-
 $ sf skuid page pull
 Wrote 85 pages to skuidpages
 
@@ -60,97 +50,129 @@ $ sf skuid page pull --module SamplePages --dir pages/sample
 Wrote 4 pages to pages/sample
 ```
 
-Page XML will be pretty-printed, with indentation automatically added, to make it easy to review and commit changes to Skuid Pages line-by-line to source control. (Note: tabs are used for indentation by default, but if you would like to use a different indentation, you can set the `SKUID_XML_INDENT` environment variable, e.g. `export SKUID_XML_INDENT="  "` to use 2 spaces instead of tabs.)
+Page XML is pretty-printed so that changes are reviewable line-by-line in
+source control. Tabs are used by default; set `SKUID_XML_INDENT` to change it,
+e.g. `export SKUID_XML_INDENT="  "` for two spaces.
 
-Going the other direction, to move Skuid Pages from the filesystem up to a Salesforce org, use the `skuid page push` command. You can use file glob patterns to specify which Pages in your filesystem that you want to push, for example:
+## Pushing pages into an org
+
+`sf skuid page push` takes file paths or glob patterns. For each `.json` or
+`.xml` path it finds, it pushes the page described by that `.json`/`.xml` pair.
 
 ```sh-session
-
 $ sf skuid page push salesapp/*Foo*
 3 Pages successfully pushed.
-
 ```
 
-<!-- usagestop -->
+### Pages that get skipped
 
-<!-- commands -->
-# Commands
-* `sf skuid page pull`
+A file that isn't a Skuid page at all is ignored silently, so broad patterns
+like `**/*` are safe to use.
 
-```
-Pull Skuid Pages from a Salesforce org into a local directory
+A file that *is* a valid page definition but whose XML has an unrecognized
+document root is **reported and excluded**:
 
-USAGE
-  $ sf skuid page pull [-m <string>] [-p <string>] [--nomodule] [-d <string>] [-o <string>] [--apiversion <string>] [--json] [--loglevel 
-  trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL]
-
-OPTIONS
-  -d, --dir=dir                                                                     Output directory to write pages to.
-  -m, --module=module                                                               Module name(s), separated by a comma.
-  -p, --page=page                                                                   Page name(s), separated by a comma.
-  -o, --target-org                                                                  alias for the target org, replaces the previous -u flag,
-  --apiversion=apiversion                                                           override the api version used for api requests made by this command
-  --json                                                                            format output as json
-  --loglevel=(trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL)  [default: warn] logging level for this command invocation
-  --nomodule                                                                        Retrieve only those pages that do not have a module
-
-EXAMPLES
-  $ sf skuid page pull -o myOrg --module CommunityPages
-  $ sf skuid page pull --nomodule
-  $ sf skuid page pull --page Page1,Page2,Page3 --dir newpages
-
+```sh-session
+$ sf skuid page push mypages/*
+Warning: Skipping Mystery.json: Invalid Skuid Page XML file. Expected the
+document root to be one of: <skuidpage>, <skuid__page>, <NtxPage>
+Found 2 matching pages within current directory, pushing changes to org...
+2 Pages successfully pushed.
 ```
 
-* `sf skuid page push`
+With `--json`, those files also appear in a `skippedFiles` array. This matters
+because such pages used to be dropped with no error and exit code 0, which made
+a partial push indistinguishable from a complete one.
 
+The three recognized document roots correspond to the page generations:
+`<skuidpage>` for v1, `<skuid__page>` for v2, and `<NtxPage>` for v3.
+
+# Command reference
+
+Run `sf skuid page pull --help` or `sf skuid page push --help` for the
+authoritative flag list.
+
+## `sf skuid page pull`
+
+Pull Skuid Pages from a Salesforce org into a local directory.
+
+| Flag | Description |
+| --- | --- |
+| `-d, --dir=<value>` | Output directory to write pages to. Defaults to `skuidpages`. |
+| `-m, --module=<value>` | Module name(s), separated by a comma. |
+| `-p, --page=<value>` | Page name(s), separated by a comma. |
+| `--nomodule` | Retrieve only those pages that do not have a module. |
+| `-o, --target-org=<value>` | Username or alias of the target org. |
+| `--api-version=<value>` | Override the API version used for API requests. |
+| `--json` | Format output as JSON. |
+| `--flags-dir=<value>` | Import flag values from a directory. |
+
+```sh-session
+$ sf skuid page pull --target-org myOrg@example.com --module CommunityPages
+$ sf skuid page pull --nomodule
+$ sf skuid page pull --page Page1,Page2,Page3 --dir newpages
 ```
-Push Skuid Pages from a directory to Skuid.
 
-USAGE
-  $ sf skuid page push [-d <string>] [-o <string>] [--apiversion <string>] [--json] [--loglevel 
-  trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL]
+## `sf skuid page push`
 
-OPTIONS
-  -d, --dir=dir                                                                     Source directory in which page files reside.
-  -o, --target-org                                                                  alias for the target org, replaces the previous -u flag,
-  --apiversion=apiversion                                                           override the api version used for api requests made by this command
-  --json                                                                            format output as json
-  --loglevel=(trace|debug|info|warn|error|fatal|TRACE|DEBUG|INFO|WARN|ERROR|FATAL)  [default: warn] logging level for this command invocation
+Push Skuid Pages from a directory to Skuid. Accepts any number of file paths or
+glob patterns as arguments; with none, it matches `**/*.json`.
 
-EXAMPLES
-  $ sf skuid page push -o myOrg
-  $ sf skuid page push skuidpages/*
-  $ sf skuid page push -d=salespages SalesApp*
-  $ sf skuid page push pages/SalesAppHome.xml pages/CommissionDetails.xml
-  $ sf skuid page push **/*
+| Flag | Description |
+| --- | --- |
+| `-d, --dir=<value>` | Source directory in which page files reside. |
+| `-o, --target-org=<value>` | Username or alias of the target org. |
+| `--api-version=<value>` | Override the API version used for API requests. |
+| `--json` | Format output as JSON. Includes `skippedFiles` when any page was excluded. |
+| `--flags-dir=<value>` | Import flag values from a directory. |
+
+```sh-session
+$ sf skuid page push --target-org myOrg@example.com *SalesApp*
+$ sf skuid page push skuidpages/SalesApp*
+$ sf skuid page push --dir salespages SalesApp*
+$ sf skuid page push pages/SalesAppHome.xml pages/CommissionDetails.xml
+$ sf skuid page push **/*.xml
 ```
 
-<!-- commandsstop -->
-
-<!-- contributing -->
 # Contributing
 
-To get started with contributing to this plugin locally, clone the repo and then link the plugin to sfdx so that it will appear within your sfdx commands list:
-
 ## Setup
+
+Clone the repo and link the plugin into `sf` so it appears in your command list:
 
 ```sh-session
 git clone https://github.com/skuid/skuid-sfdx.git
 cd skuid-sfdx
 yarn
-sf plugins:link
+yarn prepack
+sf plugins link .
 ```
 
-### Node version
+`yarn prepack` is needed before linking because the plugin runs from compiled
+output in `lib/`, not from `src/`.
 
-`.nvmrc` pins local development to Node 22 (an active LTS line). If you use
+## Node version
+
+`.nvmrc` pins local development to Node 24. If you use
 [nvm](https://github.com/nvm-sh/nvm), run `nvm use` in the repo root.
 
-`package.json` declares support for Node >= 18, and CI runs the test suite on
-Node 18, 22, 24 and 26 across Linux and Windows. Anything you land needs to
-work on all of them.
+`package.json` declares `engines.node` as `>=22.19.0` -- the floor comes from
+`undici`, by way of `@salesforce/core`. CI runs the suite on Node 22, 24 and 26
+across Linux and Windows, so anything you land needs to work on all six
+combinations.
 
-### Troubleshooting: `Failed to replace env in config`
+## The plugin is ESM
+
+`package.json` sets `"type": "module"`. This is forced by
+`@salesforce/sf-plugins-core`, which is ESM-only from v7 onward. Practical
+consequences when editing:
+
+- Relative imports need explicit `.js` extensions, even from `.ts` files.
+- There is no `__dirname`; use `import.meta.dirname`.
+- Some CommonJS dependencies expose nothing through named imports and must be
+  reached through their default export.
+
+## Troubleshooting: `Failed to replace env in config`
 
 If `yarn` prints something like:
 
@@ -169,8 +191,8 @@ it fails the whole install if any of them is unset.
 > `ls node_modules > /dev/null && echo ok`.
 
 This project resolves everything from the public npm registry and needs no
-token. To fix it, either export the variables your `~/.npmrc` references
-(any value works, including an empty one):
+token. Either export the variables your `~/.npmrc` references (any value works,
+including an empty one):
 
 ```sh-session
 export GITHUB_ACCESS_TOKEN=""
@@ -181,13 +203,13 @@ or remove the unused registry lines from `~/.npmrc`.
 
 ## Orientation
 
-Logic for each command (e.g. `skuid page pull`) is defined within a specific file under `src/commands`, within a folder structure corresponding to that plugin's namespace (e.g. the `pull` command is within `skuid/page` directory).
+Each command lives in a file under `src/commands`, in a directory structure
+matching its namespace -- `skuid page pull` is `src/commands/skuid/page/pull.ts`.
+Shared logic lives in `src/helpers`, and types in `src/types`.
 
 ## Tests
 
-Tests are located within a matching directory under `test/commands`.
-
-To run tests:
+Tests live under `test/`, mirroring the `src/` layout.
 
 ```sh-session
 yarn test
@@ -196,6 +218,33 @@ yarn test
 That runs mocha and then eslint (via the `posttest` lifecycle script) -- the
 same thing CI runs.
 
-When adding / modifying commands, please update the README with the latest output of running the command's `--help`.
+> :warning: **Verifying a dependency change needs a clean checkout.** If your
+> working copy sits inside another checkout of this repo -- a git worktree, for
+> example -- Node resolves packages by walking *up* the directory tree, so tests
+> can pass locally using a dependency that is not declared in `package.json`,
+> then fail in CI. Removing `node_modules` locally does not help. To check a
+> dependency change, copy the tracked files somewhere outside the parent
+> checkout, install there, and run the suite.
 
-<!-- contributingstop -->
+## Updating docs
+
+The command reference above is maintained **by hand**. Do not run
+`oclif readme` to regenerate it: it renders the resolved flag defaults from
+whatever machine it runs on, which writes your own default org username into
+this public file. It also overwrites the hand-written Usage prose. For the same
+reason there is no `version` npm script, so `npm version` is safe to run.
+
+When you add or change a flag, update the table by hand from
+`sf skuid page <command> --help`.
+
+## Releasing
+
+There is no release automation. Bump `version` in `package.json`, merge, then:
+
+```sh-session
+git tag <version> && git push origin <version>
+npm publish
+```
+
+`npm publish` runs `prepack`, which builds `lib/` and the oclif manifest, so no
+manual build step is needed.
