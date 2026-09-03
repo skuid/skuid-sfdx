@@ -17,14 +17,33 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = join(projectRoot, 'oclif.manifest.json');
+const npx = (...args) => execFileSync('npx', args, { cwd: projectRoot, stdio: ['ignore', 'ignore', 'inherit'] });
+
+// Build first if needed. `oclif manifest` reads the COMPILED commands in lib/;
+// run without a build it emits an empty manifest and warns only in passing,
+// which would make every documented flag look invented.
+if (!existsSync(join(projectRoot, 'lib'))) {
+  console.log('  lib/ absent; building');
+  npx('tsc', '-b');
+}
 if (!existsSync(manifestPath)) {
-  // Generate it rather than erroring, so this check does not depend on running
+  // Generated rather than required, so this check does not depend on running
   // before check-artifact (whose `npm pack` triggers postpack, which deletes it).
   console.log('  oclif.manifest.json absent; generating it');
-  execFileSync('npx', ['oclif', 'manifest'], { cwd: projectRoot, stdio: ['ignore', 'ignore', 'inherit'] });
+  npx('oclif', 'manifest');
 }
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+
+// Guard against comparing against an empty manifest: that is a broken build,
+// not a README full of invented flags, and reporting it as the latter sends
+// whoever hits it in precisely the wrong direction.
+const commandCount = Object.keys(manifest.commands ?? {}).length;
+if (!commandCount) {
+  console.error('oclif.manifest.json lists no commands -- the build is missing or stale.');
+  console.error('Run `yarn prepack` and try again.');
+  process.exit(1);
+}
 const readme = readFileSync(join(projectRoot, 'README.md'), 'utf8');
 
 // Flags named in README table rows, e.g. "| `-d, --dir=<value>` | ... |"
