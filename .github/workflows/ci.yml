@@ -15,8 +15,11 @@ jobs:
   # Explicit Node majors, never 'latest'. A brand-new Node release must not be
   # able to turn master red on its own -- see the canary job below for early warning.
   #
-  # 18 is the floor declared by package.json "engines.node".
-  # 22 and 24 are the active LTS lines; 26 is Current (LTS from 2026-10-28).
+  # The floor is 22 because package.json "engines.node" is >=22.19.0: the modern
+  # @salesforce/core chain pulls undici, which requires it. setup-node with '22'
+  # resolves the latest 22.x, which satisfies that. 24 is the active LTS line and
+  # 26 is Current (LTS from 2026-10-28). 18 and 20 were dropped when the plugin
+  # moved to ESM and the current sf-plugins-core.
   test:
     name: test (node ${{ matrix.node }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -24,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: ['18', '22', '24', '26']
+        node: ['22', '24', '26']
     steps:
       - name: Checkout code
         uses: actions/checkout@v5

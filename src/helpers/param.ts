@@ -4,7 +4,7 @@
  * Licensed under the BSD 3-Clause license.
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
-import { PullQueryParams } from '../types/types';
+import { PullQueryParams } from '../types/types.js';
 
 /**
  * Takes a hash-map of data to transmit
@@ -14,7 +14,7 @@ import { PullQueryParams } from '../types/types';
  * @return {String} URL-encoded data
  */
 function param(data: PullQueryParams): string {
-    return Object.entries(data).map(([ key, value ]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&');
+    return Object.entries(data).map(([ key, value ]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`).join('&');
 }
 
 export {

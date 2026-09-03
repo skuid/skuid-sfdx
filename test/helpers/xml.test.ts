@@ -1,7 +1,6 @@
 
-// eslint-disable-next-line header/header
 import { expect } from 'chai';
-import { condenseXml, formatXml, isValidPageXML } from '../../src/helpers/xml';
+import { condenseXml, formatXml, isValidPageXML } from '../../src/helpers/xml.js';
 
 const formula = `CASE(
 	MONTH({{CreatedDate}}),

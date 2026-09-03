@@ -1,12 +1,17 @@
 {
-  "extends": "./node_modules/@salesforce/dev-config/tsconfig",
   "compilerOptions": {
-    "outDir": "./lib",
-    "rootDir": "./src",
-    "strictNullChecks": true,
     "declaration": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "outDir": "./lib",
+    "resolveJsonModule": true,
+    "rootDir": "./src",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "target": "es2022"
   },
-  "include": [
-    "./src/**/*"
-  ]
+  "include": ["./src/**/*"]
 }

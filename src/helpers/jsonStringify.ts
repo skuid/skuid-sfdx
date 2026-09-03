@@ -1,5 +1,4 @@
-// eslint-disable-next-line header/header
-import stableStringify = require('json-stable-stringify');
+import stableStringify from 'json-stable-stringify';
 
 /**
  * Serializes an object to a JSON string using a stable, prioritized key ordering

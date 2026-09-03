@@ -5,12 +5,11 @@
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-/* eslint-disable unicorn/prefer-node-protocol */
-import { readFile } from 'fs';
-import path = require('path');
-import glob = require('glob');
-import { isValidPageXML, PAGE_ROOT_ELEMENTS } from '../helpers/xml';
-import { PageFileResults, SkippedPageFile, SkuidPage } from '../types/types';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { glob } from 'glob';
+import { isValidPageXML, PAGE_ROOT_ELEMENTS } from '../helpers/xml.js';
+import { PageFileResults, SkippedPageFile, SkuidPage } from '../types/types.js';
 
 const REQUIRED_PAGE_PROPERTIES = [
     'name',
@@ -25,18 +24,21 @@ type GlobOptions = {
 };
 
 /**
+ * Expands a single path / glob pattern.
+ *
+ * glob v7 sorted its matches; v9 onwards returns them in filesystem traversal
+ * order. Page order is load-bearing -- AB#545952 made push payloads and log
+ * output deterministic by preserving "the order their paths were globbed in" --
+ * so sort explicitly here rather than inheriting whatever order the filesystem
+ * hands back.
  *
  * @param {String} filePath - a path to a file, which may or may not contain a glob
  * @param {GlobOptions} opts - glob options
- * @return String[] - array of file paths
+ * @return String[] - array of file paths, sorted
  */
 async function globAsync(filePath: string, opts: GlobOptions): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-        glob(filePath, opts, (err, files: string[]): void => {
-            if (err) reject(err);
-            else resolve(files);
-        });
-    });
+    const matches = await glob(filePath, opts);
+    return matches.sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -120,12 +122,7 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
 }
 
 async function getFileBody(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        readFile(filePath, 'utf8', (err, fileBody) => {
-            if (err) reject(err);
-            else resolve(fileBody);
-        });
-    });
+    return readFile(filePath, 'utf8');
 }
 
 /**
@@ -164,7 +161,7 @@ async function getPageDefinitionFromJsonPath(jsonFilePath: string): Promise<Skui
     let pageDefinition;
     try {
         pageDefinition = JSON.parse(metadata) as SkuidPage;
-    } catch (ex) { /* empty */ }
+    } catch { /* not valid JSON; handled below */ }
 
     // Ensure that the provided page JSON definition is valid,
     // otherwise do not include it.

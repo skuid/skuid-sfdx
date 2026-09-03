@@ -5,23 +5,21 @@
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-/* eslint-disable no-param-reassign */
-/* eslint-disable unicorn/prefer-node-protocol */
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Messages } from '@salesforce/core';
 import { Flags, orgApiVersionFlagWithDeprecations, requiredOrgFlagWithDeprecations, SfCommand } from '@salesforce/sf-plugins-core';
 import { AnyJson, JsonMap } from '@salesforce/ts-types';
-import { stringify } from '../../../helpers/jsonStringify';
-import { param } from '../../../helpers/param';
-import { formatXml } from '../../../helpers/xml';
+import { stringify } from '../../../helpers/jsonStringify.js';
+import { param } from '../../../helpers/param.js';
+import { formatXml } from '../../../helpers/xml.js';
 import {
   PullQueryParams,
   SkuidPage
-} from '../../../types/types';
+} from '../../../types/types.js';
 
 // Initialize Messages with the current plugin directory
-Messages.importMessagesDirectory(__dirname);
+Messages.importMessagesDirectoryFromMetaUrl(import.meta.url);
 
 // Load the specific messages for this file. Messages from @salesforce/command, @salesforce/core,
 // or any library that is using the messages framework can also be loaded this way.
@@ -143,7 +141,7 @@ export default class Pull extends SfCommand<AnyJson> {
     let formattedXml: string;
     try {
       formattedXml = formatXml(xml);
-    } catch (err) {
+    } catch {
       this.error(`Page ${pageName} has invalid XML.`);
     }
     return formattedXml;

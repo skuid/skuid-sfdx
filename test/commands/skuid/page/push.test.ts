@@ -5,18 +5,17 @@
  * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
  */
 
-/* eslint-disable unicorn/prefer-node-protocol */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { resolve, join } from 'path';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve, join } from 'node:path';
 import { expect } from 'chai';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
-import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
+import { MockTestOrgData, TestContext } from '@salesforce/core/testSetup';
 import { Config } from '@oclif/core';
-import { SkuidPage, PagePost, PagePostResult } from '../../../../src/types/types';
-import { condenseXml } from '../../../../src/helpers/xml';
-import Push from '../../../../src/commands/skuid/page/push';
-const fixturesDir = resolve(__dirname, '../../../fixtures');
+import { SkuidPage, PagePost, PagePostResult } from '../../../../src/types/types.js';
+import { condenseXml } from '../../../../src/helpers/xml.js';
+import Push from '../../../../src/commands/skuid/page/push.js';
+const fixturesDir = resolve(import.meta.dirname, '../../../fixtures');
 const v1PageMetadata = readFileSync(join(fixturesDir, 'foo_SomePageName.json'), 'utf8');
 const v1PageXml = readFileSync(join(fixturesDir, 'foo_SomePageName.xml'), 'utf8');
 const v2PageMetadata = readFileSync(join(fixturesDir, 'AnotherPageName.json'), 'utf8');
@@ -39,7 +38,7 @@ const expectPushPayloadToHavePages = (pushPayload: string, pages: SkuidPage[]): 
 describe('skuid:page:push', () => {
     const $$ = new TestContext();
     const testData = new MockTestOrgData();
-    const config = new Config({ root: resolve(__dirname, '../../../package.json') });
+    const config = new Config({ root: resolve(import.meta.dirname, '../../../package.json') });
 
     beforeEach(async () => {
         await $$.stubAuths(testData);
@@ -53,7 +52,6 @@ describe('skuid:page:push', () => {
     // This allows us to test messages that are logged to the console
     const testLogMessages = (cmd: Push, messages: string[]): void => {
         let i = 0;
-        // eslint-disable-next-line no-param-reassign
         cmd.log = (result): void => {
             expect(result).to.contain(messages[i]);
             i++;
@@ -63,7 +61,6 @@ describe('skuid:page:push', () => {
     // This allows us to capture warnings emitted by the command
     const testWarnings = (cmd: Push): string[] => {
         const warnings: string[] = [];
-        // eslint-disable-next-line no-param-reassign
         cmd.warn = (input): string => {
             const message = typeof input === 'string' ? input : input.message;
             warnings.push(message);
@@ -434,22 +431,23 @@ describe('skuid:page:push', () => {
             config
         );
 
+        let caught: unknown;
         try {
             await cmd.run();
         } catch (e) {
-            const jsonString = JSON.stringify(e, Object.getOwnPropertyNames(e));
-            const jsonOutput: Error = JSON.parse(jsonString) as Error;
-
-            // Delete stack because it's too messy to test
-            delete jsonOutput.stack;
-
-            expect(e).to.be.instanceOf(Error);
-            expect(jsonOutput).to.deep.equal({
-                'name': 'SkuidPagePushError',
-                'message': 'Invalid Name for Page',
-                'exitCode': 1,
-                'actions': [],
-            });
+            caught = e;
         }
+
+        // Assert the fields this command actually sets, rather than deep-equalling
+        // the error's whole own-property set. That set is framework-owned and it
+        // changed between @salesforce/core 3 and 9 -- an empty `actions` is no
+        // longer serialized -- which is not something this plugin promises.
+        // Capturing the error first also means the test fails, rather than
+        // silently passing, if run() stops throwing.
+        expect(caught).to.be.instanceOf(Error);
+        const error = caught as Error & { exitCode?: number };
+        expect(error.name).to.equal('SkuidPagePushError');
+        expect(error.message).to.contain('Invalid Name for Page');
+        expect(error.exitCode).to.equal(1);
     });
 });
