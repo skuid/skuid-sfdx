@@ -1,7 +1,7 @@
 
 // eslint-disable-next-line header/header
 import { expect } from 'chai';
-import { condenseXml, formatXml } from '../../src/helpers/xml';
+import { condenseXml, formatXml, isValidPageXML } from '../../src/helpers/xml';
 
 const formula = `CASE(
 	MONTH({{CreatedDate}}),
@@ -70,5 +70,29 @@ describe('formatXml', () => {
 		const alternateIndent = process.env.SKUID_XML_INDENT = '  ';
 		expect(formatXml(condensed).replace('\r\n', '\n')).to.equal(getFormatted(alternateIndent));
 		delete process.env.SKUID_XML_INDENT;
+	});
+});
+
+describe('isValidPageXML', () => {
+	it('should accept a v1 page root', () => {
+		expect(isValidPageXML('<skuidpage><models/></skuidpage>')).to.equal(true);
+	});
+	it('should accept a v2 page root', () => {
+		expect(isValidPageXML('<skuid__page><components/></skuid__page>')).to.equal(true);
+	});
+	it('should accept a v3 page root', () => {
+		expect(isValidPageXML('<NtxPage><components/></NtxPage>')).to.equal(true);
+	});
+	it('should accept a page preceded by an XML declaration', () => {
+		expect(isValidPageXML('<?xml version="1.0" encoding="UTF-8"?>\n<NtxPage><components/></NtxPage>')).to.equal(true);
+	});
+	it('should accept a page preceded by leading whitespace', () => {
+		expect(isValidPageXML('\n\t<skuid__page><components/></skuid__page>')).to.equal(true);
+	});
+	it('should reject XML that is not a Skuid page', () => {
+		expect(isValidPageXML('<foo><bar/></foo>')).to.equal(false);
+	});
+	it('should reject a file that is not XML at all', () => {
+		expect(isValidPageXML('{"components":[]}')).to.equal(false);
 	});
 });

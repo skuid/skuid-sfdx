@@ -15,6 +15,7 @@ import { condenseXml } from '../../../helpers/xml';
 import {
     PagePost,
     PagePostResult,
+    SkippedPageFile,
     SkuidPage
 } from '../../../types/types';
 
@@ -49,6 +50,18 @@ export default class Push extends SfCommand<AnyJson> {
         'target-org': requiredOrgFlagWithDeprecations,
         'api-version': orgApiVersionFlagWithDeprecations
     };
+
+    /**
+     * Builds the portion of the --json result that describes excluded page files.
+     * Omitted entirely when nothing was excluded, so that the result shape is
+     * unchanged for the common case.
+     *
+     * @param skippedFiles {SkippedPageFile[]} page files excluded from the push
+     * @returns {Object} a fragment to merge into the command's JSON result
+     */
+    private static buildSkippedFilesResult(skippedFiles: SkippedPageFile[]): { skippedFiles?: SkippedPageFile[] } {
+        return skippedFiles.length ? { skippedFiles } : {};
+    }
 
     public async run(): Promise<AnyJson> {
         const { flags } = await this.parse(Push);
@@ -98,12 +111,19 @@ export default class Push extends SfCommand<AnyJson> {
 
         if (!filePaths.length) filePaths.push('**/*.json');
 
-        const pageDefinitions = await getPageDefinitionsFromFileGlobs(filePaths, dir);
+        const { pageDefinitions, skippedFiles } = await getPageDefinitionsFromFileGlobs(filePaths, dir);
+
+        // Report any page files that were excluded from the push before doing anything else.
+        // Dropping these silently has previously made an unsupported page format look like a
+        // successful push, so they are always surfaced.
+        skippedFiles.forEach(({ filePath, reason }) => this.warn(`Skipping ${filePath}: ${reason}`));
+        const skippedFilesResult = Push.buildSkippedFilesResult(skippedFiles);
 
         if (!pageDefinitions.length) {
             if (json) {
                 return {
                     pages: [],
+                    ...skippedFilesResult,
                     success: false
                 };
             } else {
@@ -153,6 +173,7 @@ export default class Push extends SfCommand<AnyJson> {
 
         if (json) {
             result.pages = pageDefinitions.map(getUniqueId);
+            Object.assign(result, skippedFilesResult);
             return result;
         } else {
             this.log(pageDefinitions.length + ' Pages successfully pushed.');

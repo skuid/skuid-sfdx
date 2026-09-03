@@ -6,13 +6,14 @@
  */
 
 /* eslint-disable unicorn/prefer-node-protocol */
-import { readFileSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { resolve, join } from 'path';
 import { expect } from 'chai';
 import { AnyJson, ensureJsonMap, ensureString } from '@salesforce/ts-types';
 import { MockTestOrgData, TestContext } from '@salesforce/core/lib/testSetup';
 import { Config } from '@oclif/core';
-import { SkuidPage, PagePost } from '../../../../src/types/types';
+import { SkuidPage, PagePost, PagePostResult } from '../../../../src/types/types';
 import { condenseXml } from '../../../../src/helpers/xml';
 import Push from '../../../../src/commands/skuid/page/push';
 const fixturesDir = resolve(__dirname, '../../../fixtures');
@@ -20,8 +21,12 @@ const v1PageMetadata = readFileSync(join(fixturesDir, 'foo_SomePageName.json'), 
 const v1PageXml = readFileSync(join(fixturesDir, 'foo_SomePageName.xml'), 'utf8');
 const v2PageMetadata = readFileSync(join(fixturesDir, 'AnotherPageName.json'), 'utf8');
 const v2PageXml = readFileSync(join(fixturesDir, 'AnotherPageName.xml'), 'utf8');
+// A v3 page: a v2/ink2 page authored in Page Designer, rooted at <NtxPage>
+const v3PageMetadata = readFileSync(join(fixturesDir, 'V3PageName.json'), 'utf8');
+const v3PageXml = readFileSync(join(fixturesDir, 'V3PageName.xml'), 'utf8');
 const v1PageMetadataWithXml = Object.assign({}, JSON.parse(v1PageMetadata), { body: v1PageXml }) as SkuidPage;
 const v2PageMetadataWithXml = Object.assign({}, JSON.parse(v2PageMetadata), { body: v2PageXml }) as SkuidPage;
+const v3PageMetadataWithXml = Object.assign({}, JSON.parse(v3PageMetadata), { body: v3PageXml }) as SkuidPage;
 const expectPushPayloadToHavePages = (pushPayload: string, pages: SkuidPage[]): void => {
     const payload: PagePost = JSON.parse(pushPayload) as PagePost;
     expect(payload).to.have.property('changes');
@@ -55,11 +60,23 @@ describe('skuid:page:push', () => {
         };
     }
 
+    // This allows us to capture warnings emitted by the command
+    const testWarnings = (cmd: Push): string[] => {
+        const warnings: string[] = [];
+        // eslint-disable-next-line no-param-reassign
+        cmd.warn = (input): string => {
+            const message = typeof input === 'string' ? input : input.message;
+            warnings.push(message);
+            return message;
+        };
+        return warnings;
+    }
+
     it('runs skuid:page:push from a source directory', async () => {
         $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
             const requestMap = ensureJsonMap(request);
             if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-                expectPushPayloadToHavePages(requestMap.body as string, [ v2PageMetadataWithXml, v1PageMetadataWithXml ]);
+                expectPushPayloadToHavePages(requestMap.body as string, [ v2PageMetadataWithXml, v1PageMetadataWithXml, v3PageMetadataWithXml ]);
                 return Promise.resolve(JSON.stringify({
                     success: true,
                 }));
@@ -73,8 +90,8 @@ describe('skuid:page:push', () => {
         );
 
         testLogMessages(cmd, [
-            'Found 2 matching pages within test/fixtures, pushing changes to org...',
-            '2 Pages successfully pushed.'
+            'Found 3 matching pages within test/fixtures, pushing changes to org...',
+            '3 Pages successfully pushed.'
         ]);
 
         await cmd.run();
@@ -84,7 +101,7 @@ describe('skuid:page:push', () => {
         $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
             const requestMap = ensureJsonMap(request);
             if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-                expectPushPayloadToHavePages(requestMap.body as string, [ v2PageMetadataWithXml, v1PageMetadataWithXml ]);
+                expectPushPayloadToHavePages(requestMap.body as string, [ v2PageMetadataWithXml, v1PageMetadataWithXml, v3PageMetadataWithXml ]);
                 return Promise.resolve(JSON.stringify({
                     success: true,
                 }));
@@ -102,6 +119,7 @@ describe('skuid:page:push', () => {
         const typedResult = result as PushResult;
         expect(typedResult.pages).to.contain('AnotherPageName');
         expect(typedResult.pages).to.contain('foo_SomePageName');
+        expect(typedResult.pages).to.contain('V3PageName');
         expect(typedResult.success).to.equal(true);
     });
 
@@ -231,7 +249,7 @@ describe('skuid:page:push', () => {
         $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
             const requestMap = ensureJsonMap(request);
             if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
-                expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml]);
+                expectPushPayloadToHavePages(requestMap.body as string, [v2PageMetadataWithXml, v1PageMetadataWithXml, v3PageMetadataWithXml]);
                 return Promise.resolve(JSON.stringify({
                     success: true,
                 }));
@@ -251,8 +269,8 @@ describe('skuid:page:push', () => {
         );
 
         testLogMessages(cmd, [
-            'Found 2 matching pages within test, pushing changes to org...',
-            '2 Pages successfully pushed.'
+            'Found 3 matching pages within test, pushing changes to org...',
+            '3 Pages successfully pushed.'
         ]);
 
         await cmd.run();
@@ -284,6 +302,72 @@ describe('skuid:page:push', () => {
         });
     });
 
+    it('pushes a v3 page, preserving its NtxPage body and formatVersion', async () => {
+        let capturedBody = '';
+        $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
+            const requestMap = ensureJsonMap(request);
+            if (ensureString(requestMap.url).match(/services\/apexrest\/skuid\/api\/v1\/pages/)) {
+                capturedBody = requestMap.body as string;
+                return Promise.resolve(JSON.stringify({
+                    success: true,
+                }));
+            }
+            return Promise.reject(new Error('Unexpected request'));
+        };
+
+        const cmd = new Push(
+            ['--target-org', testData.username, 'test/fixtures/V3PageName.*'],
+            config
+        );
+
+        testLogMessages(cmd, [
+            'Found 1 matching pages within current directory, pushing changes to org...',
+            '1 Pages successfully pushed.'
+        ]);
+
+        await cmd.run();
+
+        const payload: PagePost = JSON.parse(capturedBody) as PagePost;
+        expect(payload.changes.length).to.equal(1);
+        const pushedPage = payload.changes[0];
+        expect(pushedPage.uniqueId).to.equal('_V3PageName');
+        expect(pushedPage.formatVersion).to.equal('ink2');
+        expect(pushedPage.body).to.equal(condenseXml(v3PageXml));
+        expect(pushedPage.body).to.contain('<NtxPage>');
+    });
+
+    it('warns about, and excludes, a page whose XML root is not recognized', async () => {
+        const tempDir = mkdtempSync(join(tmpdir(), 'skuid-sfdx-push-'));
+        // A valid page definition, but with an XML root this plugin does not know about.
+        writeFileSync(join(tempDir, 'MysteryPage.json'), JSON.stringify({
+            apiVersion: 'v2',
+            name: 'MysteryPage',
+            uniqueId: '_MysteryPage'
+        }), 'utf8');
+        writeFileSync(join(tempDir, 'MysteryPage.xml'), '<SomeFuturePage><components/></SomeFuturePage>', 'utf8');
+
+        try {
+            const cmd = new Push(
+                ['--target-org', testData.username, '--dir', tempDir, '--json', '**/*.json'],
+                config
+            );
+            const warnings = testWarnings(cmd);
+
+            const result = await cmd.run() as PagePostResult;
+
+            // The page must not be pushed silently -- it is both reported and excluded.
+            expect(warnings.length).to.equal(1);
+            expect(warnings[0]).to.contain('Skipping MysteryPage.json');
+            expect(warnings[0]).to.contain('<NtxPage>');
+            expect(result.pages).to.deep.equal([]);
+            expect(result.success).to.equal(false);
+            expect(result.skippedFiles?.length).to.equal(1);
+            expect(result.skippedFiles?.[0].filePath).to.equal('MysteryPage.json');
+        } finally {
+            rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
     it('handles errors from server', async () => {
         $$.fakeConnectionRequest = (request: AnyJson): Promise<AnyJson> => {
             const requestMap = ensureJsonMap(request);
@@ -303,20 +387,29 @@ describe('skuid:page:push', () => {
             config
         );
 
-        testLogMessages(cmd, [
-            'Found 2 matching pages within test/fixtures, pushing changes to org...',
-            'AnotherPageName',
-            'foo_SomePageName'
-        ]);
+        // Page names are logged in whatever order their definitions finished loading,
+        // so collect the output and assert against it without depending on that order.
+        const logged: string[] = [];
+        cmd.log = (message?: string): void => {
+            logged.push(message ?? '');
+        };
 
+        let caught: unknown;
         try {
             await cmd.run();
         } catch (e) {
-            expect(e).to.be.instanceOf(Error);
-            if (e instanceof Error) {
-                expect(e.message).to.contain('Invalid Name for Page');
-            }
+            caught = e;
         }
+
+        expect(caught).to.be.instanceOf(Error);
+        expect((caught as Error).message).to.contain('Invalid Name for Page');
+
+        // On failure the pushed page names are logged, to help debug the cause
+        expect(logged[0]).to.contain('Found 3 matching pages within test/fixtures, pushing changes to org...');
+        const pageNameOutput = logged.slice(1).join('\n');
+        expect(pageNameOutput).to.contain('AnotherPageName');
+        expect(pageNameOutput).to.contain('foo_SomePageName');
+        expect(pageNameOutput).to.contain('V3PageName');
     });
 
     it('handles errors from server and returns in json format if requested', async () => {
