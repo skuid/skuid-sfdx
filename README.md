@@ -218,6 +218,14 @@ yarn test
 That runs mocha and then eslint (via the `posttest` lifecycle script) -- the
 same thing CI runs.
 
+The mocha timeout in `.mocharc.json` is deliberately generous (60s). It applies
+to hooks as well as tests, and the `beforeEach` hooks do real I/O -- stubbing org
+auth, loading the oclif config, clearing output directories. Locally the whole
+suite finishes in under half a second, but the Windows CI legs take 80-130s for
+the same work under runner contention, and a 10s hook budget flaked there
+roughly one run in three. Lower it and you will get intermittent
+"Timeout of Nms exceeded" failures in `beforeEach` on Windows only.
+
 > :warning: **Verifying a dependency change needs a clean checkout.** If your
 > working copy sits inside another checkout of this repo -- a git worktree, for
 > example -- Node resolves packages by walking *up* the directory tree, so tests
@@ -225,6 +233,30 @@ same thing CI runs.
 > then fail in CI. Removing `node_modules` locally does not help. To check a
 > dependency change, copy the tracked files somewhere outside the parent
 > checkout, install there, and run the suite.
+
+## Hardening checks
+
+`yarn test` runs mocha and eslint. It cannot catch a class of bug this repo has
+shipped more than once, because it resolves everything against the repo's own
+`node_modules` and never exercises the packaged output. `yarn harden` covers
+that gap and runs in CI as the `harden` job:
+
+| Command | Catches |
+| --- | --- |
+| `yarn check:imports` | A bare import in `src/` or `test/` whose package isn't declared in `package.json`, is declared but not installed, or resolves from *outside* this directory. Resolvability is deliberately not the test: hundreds of packages are installed transitively here and would resolve fine, but consumers only get what is declared -- which is exactly how `glob` shipped broken. |
+| `yarn check:artifact` | Packs the plugin, installs it somewhere clean with only its declared production dependencies, and imports every command. The suite can pass while the published plugin is broken; this is what notices. |
+| `yarn check:audit` | Known advisories. High and critical in shipped dependencies fail; lower severities and the dev tree report only. |
+| `yarn check:readme` | The flag tables above drifting from the real command manifest. |
+
+One more, not run in CI because CI gets it for free from a clean checkout:
+
+```sh-session
+yarn check:isolated
+```
+
+That copies the tracked files outside this checkout, installs, and runs the
+suite with nothing borrowable -- see the warning under [Tests](#tests) for why
+that matters.
 
 ## Updating docs
 
@@ -235,7 +267,14 @@ this public file. It also overwrites the hand-written Usage prose. For the same
 reason there is no `version` npm script, so `npm version` is safe to run.
 
 When you add or change a flag, update the table by hand from
-`sf skuid page <command> --help`.
+`sf skuid page <command> --help` -- but **do not paste the `[default: ...]`
+values**. `--help` resolves those against the machine it runs on, so your own
+default org username appears there. Describe defaults in prose instead, the way
+`--dir` does above.
+
+`yarn check:readme` enforces all of this: it fails if a documented flag does not
+exist, if a real flag is missing, if the oclif markers reappear, or if a
+`[default: ...]` makes it into this file.
 
 ## Releasing
 

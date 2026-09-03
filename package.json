@@ -57,6 +57,12 @@
   },
   "repository": "skuid/skuid-sfdx",
   "scripts": {
+    "check:artifact": "node scripts/check-artifact.mjs",
+    "check:audit": "node scripts/check-audit.mjs",
+    "check:imports": "node scripts/check-imports.mjs",
+    "check:isolated": "node scripts/check-isolated.mjs",
+    "check:readme": "node scripts/check-readme-flags.mjs",
+    "harden": "node scripts/check-imports.mjs && node scripts/check-readme-flags.mjs && node scripts/check-artifact.mjs && node scripts/check-audit.mjs",
     "lint-fix": "eslint src test --fix",
     "postpack": "rimraf oclif.manifest.json",
     "posttest": "eslint src test",
