@@ -75,7 +75,11 @@ if (presentMarkers.length) {
   );
 }
 
-for (const [match] of readme.matchAll(/\[default:[^\]]*\]/g)) {
+for (const [match, value] of readme.matchAll(/\[default:([^\]]*)\]/g)) {
+  // Allow documentation placeholders -- prose that warns about this pattern has
+  // to be able to name it. A real leak carries a concrete value.
+  const placeholder = ['...', '…'].includes(value.trim()) || value.trim().startsWith('<');
+  if (placeholder) continue;
   guardFailures.push(
     `machine-specific default documented: ${match}\n` +
     '    --help renders defaults resolved from whoever ran it, including their default\n' +
