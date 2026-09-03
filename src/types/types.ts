@@ -9,6 +9,9 @@ type SkuidPage = {
     masterPageUniqueId: string;
     isMasterPage: boolean;
     composerSettings: object;
+    // Marks the page's authoring format, e.g. "ink2" for a Page Designer (v3) page.
+    // Absent on older pages.
+    formatVersion?: string;
     body?: string;
     content?: string;
 };
@@ -18,10 +21,24 @@ type PagePost = {
     deletions: SkuidPage[];
 };
 
+/**
+ * A file that looked like a Skuid Page but was excluded from the push.
+ */
+type SkippedPageFile = {
+    filePath: string;
+    reason: string;
+};
+
+type PageFileResults = {
+    pageDefinitions: SkuidPage[];
+    skippedFiles: SkippedPageFile[];
+};
+
 type PagePostResult = {
     pages: string[];
     success: boolean;
     upsertErrors: string[];
+    skippedFiles?: SkippedPageFile[];
 };
 
 type PullQueryParams = {
@@ -31,8 +48,10 @@ type PullQueryParams = {
 };
 
 export {
+    PageFileResults,
     PagePost,
     PagePostResult,
     PullQueryParams,
+    SkippedPageFile,
     SkuidPage
 };

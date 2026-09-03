@@ -9,8 +9,8 @@
 import { readFile } from 'fs';
 import path = require('path');
 import glob = require('glob');
-import { isValidPageXML } from '../helpers/xml';
-import { SkuidPage } from '../types/types';
+import { isValidPageXML, PAGE_ROOT_ELEMENTS } from '../helpers/xml';
+import { PageFileResults, SkippedPageFile, SkuidPage } from '../types/types';
 
 const REQUIRED_PAGE_PROPERTIES = [
     'name',
@@ -41,10 +41,10 @@ async function globAsync(filePath: string, opts: GlobOptions): Promise<string[]>
 
 /**
  * @param {String[]} filePaths - an array of file paths / globs, optionally within a source directory.
- * @returns {SkuidPage[]}
+ * @returns {PageFileResults} the page definitions to push, plus any page files that were excluded
  */
 
-async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirectory: string|undefined): Promise<SkuidPage[]> {
+async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirectory: string|undefined): Promise<PageFileResults> {
     const opts = {} as GlobOptions;
     if (sourceDirectory) opts.cwd = sourceDirectory;
 
@@ -69,6 +69,7 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
     }
 
     const pageDefinitions = [] as SkuidPage[];
+    const skippedFiles = [] as SkippedPageFile[];
     await Promise.all(
         combinedResults
             .map(async (f, index) => {
@@ -89,20 +90,33 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
                         throw e;
                     }
 
-                    if ([
-                        INVALID_PAGE_XML,
-                        INVALID_PAGE_JSON
-                    ].includes(errorMessage)) {
+                    // A file that is not a Skuid Page definition at all gets ignored without
+                    // comment, so that broad globs (e.g. "**/*") remain usable.
+                    if (errorMessage === INVALID_PAGE_JSON) return;
+
+                    // A valid page definition whose companion XML we do not recognize is a
+                    // different matter: that is a real page being dropped from the push, so
+                    // record it for the caller to report rather than losing it silently.
+                    if (errorMessage === INVALID_PAGE_XML) {
+                        // Assigned by index for the same reason as pageDefinitions above, so that
+                        // the warnings the caller emits also come out in a stable order.
+                        skippedFiles[index] = {
+                            filePath: f,
+                            reason: `${INVALID_PAGE_XML}. Expected the document root to be one of: ${PAGE_ROOT_ELEMENTS.map(rootElement => `<${rootElement}>`).join(', ')}`
+                        };
                         return;
-                    } else {
-                        throw e;
                     }
+
+                    throw e;
                 }
             })
     );
-    // Files that were skipped leave holes in the sparse array above; filter() drops those,
-    // and the pages that did resolve keep the order their paths were globbed in.
-    return pageDefinitions.filter(pageDefinition => pageDefinition !== undefined);
+    // Files that were skipped leave holes in the sparse arrays above; filter() drops those,
+    // and the entries that did resolve keep the order their paths were globbed in.
+    return {
+        pageDefinitions: pageDefinitions.filter(pageDefinition => pageDefinition !== undefined),
+        skippedFiles: skippedFiles.filter(skippedFile => skippedFile !== undefined)
+    };
 }
 
 async function getFileBody(filePath: string): Promise<string> {
