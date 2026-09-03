@@ -218,6 +218,14 @@ yarn test
 That runs mocha and then eslint (via the `posttest` lifecycle script) -- the
 same thing CI runs.
 
+The mocha timeout in `.mocharc.json` is deliberately generous (60s). It applies
+to hooks as well as tests, and the `beforeEach` hooks do real I/O -- stubbing org
+auth, loading the oclif config, clearing output directories. Locally the whole
+suite finishes in under half a second, but the Windows CI legs take 80-130s for
+the same work under runner contention, and a 10s hook budget flaked there
+roughly one run in three. Lower it and you will get intermittent
+"Timeout of Nms exceeded" failures in `beforeEach` on Windows only.
+
 > :warning: **Verifying a dependency change needs a clean checkout.** If your
 > working copy sits inside another checkout of this repo -- a git worktree, for
 > example -- Node resolves packages by walking *up* the directory tree, so tests
