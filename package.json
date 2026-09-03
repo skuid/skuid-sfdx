@@ -17,8 +17,8 @@
     "@salesforce/sf-plugins-core": "^2.4.2",
     "@salesforce/ts-types": "^1.7.1",
     "@types/fs-extra": "^9.0.13",
+    "glob": "^7.2.3",
     "json-stable-stringify": "^1.0.1",
-    "node-glob": "^1.2.0",
     "tslib": "^2",
     "typescript": "^4.8.4",
     "vkbeautify": "^0.99.3"
@@ -33,6 +33,7 @@
     "@salesforce/prettier-config": "^0.0.2",
     "@salesforce/ts-sinon": "^1.4.1",
     "@types/chai": "^4",
+    "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "^18",
     "chai": "^4",
