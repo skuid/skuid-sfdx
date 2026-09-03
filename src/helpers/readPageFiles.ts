@@ -71,11 +71,14 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
     const pageDefinitions = [] as SkuidPage[];
     await Promise.all(
         combinedResults
-            .map(async f => {
+            .map(async (f, index) => {
                 let result: SkuidPage;
                 try {
                     result = await getPageDefinitionFromJsonPath(path.resolve(sourceDirectory ?? '', f));
-                    pageDefinitions.push(result);
+                    // Assign by index rather than pushing. These reads settle in I/O completion
+                    // order, so pushing made the page order vary between runs, which produced
+                    // nondeterministic push payloads and log output.
+                    pageDefinitions[index] = result;
                 } catch (e) {
                     let errorMessage: string;
                     if (typeof e === 'string') {
@@ -97,7 +100,9 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
                 }
             })
     );
-    return pageDefinitions;
+    // Files that were skipped leave holes in the sparse array above; filter() drops those,
+    // and the pages that did resolve keep the order their paths were globbed in.
+    return pageDefinitions.filter(pageDefinition => pageDefinition !== undefined);
 }
 
 async function getFileBody(filePath: string): Promise<string> {
