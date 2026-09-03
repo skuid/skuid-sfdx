@@ -1,0 +1,56 @@
+# Dependabot configuration.
+#
+# This file exists to silence security alerts that Dependabot cannot act on, so
+# that alerts it CAN act on are not buried in permanently-failing bot runs.
+#
+# Every package listed below is an indirect dependency whose version is capped by
+# a parent's requirement. Dependabot security updates only bump the vulnerable
+# package itself, never the parent, so each of these reported
+# "update_not_possible" and failed on every alert refresh. Note that Dependabot
+# does not honour yarn "resolutions" when deciding feasibility, so the resolutions
+# already in package.json do not stop the retries either.
+#
+# Before adding to this list, check whether the package actually ships. A
+# production-only tree tells you:
+#
+#   yarn install --production --frozen-lockfile
+#
+# Anything reachable only from devDependencies does not reach consumers -- the
+# published tarball contains just lib/, messages/, oclif.manifest.json and
+# package.json.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    # 0 disables version-update PRs. Security updates still run; only the
+    # ignore rules below apply to them. Raise this if the team decides it wants
+    # routine dependency-bump PRs as well.
+    open-pull-requests-limit: 0
+    ignore:
+      # SHIPPED, tracked in AB#545957 -- do not simply dismiss this one.
+      # tmp@0.0.33 is in the runtime tree via external-editor@3.1.0, which
+      # @salesforce/core and @salesforce/sf-plugins-core both require. Cannot move
+      # while package.json pins "@salesforce/core": "3.36.2" in resolutions.
+      # Remove this entry once that pin is lifted and the tree carries tmp >= 0.2.6.
+      - dependency-name: tmp
+
+      # Dev-only from here down: absent from a production-only install, so these
+      # do not reach consumers. Safe to dismiss in the Security tab.
+
+      # Capped at ^8/^9 by istanbul-lib-processinfo, gaxios and
+      # @smithy/middleware-retry; the advisory needs >= 11.1.1.
+      # Reaches us through nyc and @salesforce/dev-scripts.
+      - dependency-name: uuid
+
+      # @aws-sdk/core@3.821.0 pins fast-xml-parser to exactly 4.4.1, via oclif.
+      - dependency-name: fast-xml-parser
+
+      # Dev tooling only (@salesforce/dev-scripts chain).
+      - dependency-name: serialize-javascript
+
+      # The runtime copies are 2.1.4 and 1.1.18, both OUTSIDE the advisory range
+      # (>= 3.0.0 < 5.0.7). The only vulnerable copy is
+      # wireit/node_modules/brace-expansion@4.0.1, and wireit is dev-only.
+      - dependency-name: brace-expansion
