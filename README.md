@@ -4,7 +4,7 @@ skuid-sfdx
 SFDX plugin for managing Skuid metadata
 
 [![Version](https://img.shields.io/npm/v/skuid-sfdx.svg)](https://npmjs.org/package/skuid-sfdx)
-[![CircleCI](https://circleci.com/gh/skuid/skuid-sfdx/tree/master.svg?style=shield)](https://circleci.com/gh/skuid/skuid-sfdx/tree/master)
+[![CI/CD](https://github.com/skuid/skuid-sfdx/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/skuid/skuid-sfdx/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/skuid/skuid-sfdx/branch/master/graph/badge.svg)](https://codecov.io/gh/skuid/skuid-sfdx)
 [![Downloads/week](https://img.shields.io/npm/dw/skuid-sfdx.svg)](https://npmjs.org/package/skuid-sfdx)
 [![License](https://img.shields.io/npm/l/skuid-sfdx.svg)](https://github.com/skuid/skuid-sfdx/blob/master/package.json)
@@ -137,6 +137,44 @@ yarn
 sf plugins:link
 ```
 
+### Node version
+
+`.nvmrc` pins local development to Node 22 (an active LTS line). If you use
+[nvm](https://github.com/nvm-sh/nvm), run `nvm use` in the repo root.
+
+`package.json` declares support for Node >= 18, and CI runs the test suite on
+Node 18, 22, 24 and 26 across Linux and Windows. Anything you land needs to
+work on all of them.
+
+### Troubleshooting: `Failed to replace env in config`
+
+If `yarn` prints something like:
+
+```
+error Error: Failed to replace env in config: ${GITHUB_ACCESS_TOKEN}
+```
+
+then **your install did not happen**. This is not a problem with this repo --
+it comes from your own `~/.npmrc`. Yarn eagerly expands every `${VAR}`
+reference it finds there, even for registries this project never contacts, and
+it fails the whole install if any of them is unset.
+
+> :warning: **Yarn still exits 0 when this happens.** The error scrolls past,
+> `node_modules` is left missing or incomplete, and scripts appear to succeed.
+> After installing, confirm you actually got dependencies:
+> `ls node_modules > /dev/null && echo ok`.
+
+This project resolves everything from the public npm registry and needs no
+token. To fix it, either export the variables your `~/.npmrc` references
+(any value works, including an empty one):
+
+```sh-session
+export GITHUB_ACCESS_TOKEN=""
+yarn
+```
+
+or remove the unused registry lines from `~/.npmrc`.
+
 ## Orientation
 
 Logic for each command (e.g. `skuid page pull`) is defined within a specific file under `src/commands`, within a folder structure corresponding to that plugin's namespace (e.g. the `pull` command is within `skuid/page` directory).
@@ -145,11 +183,14 @@ Logic for each command (e.g. `skuid page pull`) is defined within a specific fil
 
 Tests are located within a matching directory under `test/commands`.
 
-To run tests: 
+To run tests:
 
 ```sh-session
-npm test
+yarn test
 ```
+
+That runs mocha and then eslint (via the `posttest` lifecycle script) -- the
+same thing CI runs.
 
 When adding / modifying commands, please update the README with the latest output of running the command's `--help`.
 
