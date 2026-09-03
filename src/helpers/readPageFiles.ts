@@ -72,11 +72,14 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
     const skippedFiles = [] as SkippedPageFile[];
     await Promise.all(
         combinedResults
-            .map(async f => {
+            .map(async (f, index) => {
                 let result: SkuidPage;
                 try {
                     result = await getPageDefinitionFromJsonPath(path.resolve(sourceDirectory ?? '', f));
-                    pageDefinitions.push(result);
+                    // Assign by index rather than pushing. These reads settle in I/O completion
+                    // order, so pushing made the page order vary between runs, which produced
+                    // nondeterministic push payloads and log output.
+                    pageDefinitions[index] = result;
                 } catch (e) {
                     let errorMessage: string;
                     if (typeof e === 'string') {
@@ -95,10 +98,12 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
                     // different matter: that is a real page being dropped from the push, so
                     // record it for the caller to report rather than losing it silently.
                     if (errorMessage === INVALID_PAGE_XML) {
-                        skippedFiles.push({
+                        // Assigned by index for the same reason as pageDefinitions above, so that
+                        // the warnings the caller emits also come out in a stable order.
+                        skippedFiles[index] = {
                             filePath: f,
                             reason: `${INVALID_PAGE_XML}. Expected the document root to be one of: ${PAGE_ROOT_ELEMENTS.map(rootElement => `<${rootElement}>`).join(', ')}`
-                        });
+                        };
                         return;
                     }
 
@@ -106,7 +111,12 @@ async function getPageDefinitionsFromFileGlobs(filePaths: string[], sourceDirect
                 }
             })
     );
-    return { pageDefinitions, skippedFiles };
+    // Files that were skipped leave holes in the sparse arrays above; filter() drops those,
+    // and the entries that did resolve keep the order their paths were globbed in.
+    return {
+        pageDefinitions: pageDefinitions.filter(pageDefinition => pageDefinition !== undefined),
+        skippedFiles: skippedFiles.filter(skippedFile => skippedFile !== undefined)
+    };
 }
 
 async function getFileBody(filePath: string): Promise<string> {

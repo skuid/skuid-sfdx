@@ -362,7 +362,10 @@ describe('skuid:page:push', () => {
             expect(result.pages).to.deep.equal([]);
             expect(result.success).to.equal(false);
             expect(result.skippedFiles?.length).to.equal(1);
-            expect(result.skippedFiles?.[0].filePath).to.equal('MysteryPage.json');
+            // "contain" rather than "equal": the reported path comes back from glob relative
+            // to the source directory, and we do not want a path separator difference on
+            // Windows to fail an assertion that is really about which file got reported.
+            expect(result.skippedFiles?.[0].filePath).to.contain('MysteryPage.json');
         } finally {
             rmSync(tempDir, { recursive: true, force: true });
         }
